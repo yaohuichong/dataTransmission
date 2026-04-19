@@ -169,7 +169,8 @@ def get_messages():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT id, msg_type, content, filename, file_size, relative_path, folder_id, file_count, created_at
+        SELECT id, msg_type, content, filename, file_size, relative_path, folder_id, file_count, 
+               datetime(created_at, '+8 hours') as created_at
         FROM messages 
         WHERE user_id = ? AND id > ? AND msg_type != 'folder_file'
         ORDER BY created_at ASC
@@ -212,7 +213,7 @@ def search_messages():
     conn = get_db()
     cursor = conn.cursor()
     
-    query = 'SELECT id, msg_type, content, filename, file_size, relative_path, folder_id, file_count, created_at FROM messages WHERE user_id = ? AND msg_type != \'folder_file\''
+    query = 'SELECT id, msg_type, content, filename, file_size, relative_path, folder_id, file_count, datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE user_id = ? AND msg_type != \'folder_file\''
     params = [user_id]
     
     if keyword:
@@ -271,8 +272,8 @@ def send_text():
     if not content:
         return jsonify({'error': '消息内容不能为空'}), 400
     
-    if len(content) > 10000:
-        return jsonify({'error': '消息内容过长'}), 400
+    if len(content) > 500000:
+        return jsonify({'error': '消息内容过长，最大支持50万字符'}), 400
     
     user_id = session['user_id']
     
@@ -285,7 +286,7 @@ def send_text():
         ''', (user_id, 'text', content))
         conn.commit()
         msg_id = cursor.lastrowid
-        cursor.execute('SELECT created_at FROM messages WHERE id = ?', (msg_id,))
+        cursor.execute('SELECT datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
         conn.close()
         
@@ -343,7 +344,7 @@ def send_file():
         ''', (user_id, 'file', original_filename, saved_name, file_size, relative_path))
         conn.commit()
         msg_id = cursor.lastrowid
-        cursor.execute('SELECT created_at FROM messages WHERE id = ?', (msg_id,))
+        cursor.execute('SELECT datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
         conn.close()
         
@@ -417,7 +418,7 @@ def send_folder():
         ''', (user_id, 'folder', folder_name, folder_path, total_size, folder_id, file_count))
         
         msg_id = cursor.lastrowid
-        cursor.execute('SELECT created_at FROM messages WHERE id = ?', (msg_id,))
+        cursor.execute('SELECT datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
         conn.commit()
         conn.close()
@@ -462,24 +463,113 @@ def download_folder(folder_id):
     if not os.path.exists(folder_path):
         return jsonify({'error': '文件夹不存在'}), 404
     
-    zip_buffer = io.BytesIO()
+    download_format = request.args.get('format', 'zip')
     
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, folder_path)
-                zip_file.write(file_path, arcname)
+    from urllib.parse import quote
+    import tarfile
     
-    zip_buffer.seek(0)
+    if download_format == 'tar':
+        tar_buffer = io.BytesIO()
+        
+        with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, folder_path)
+                    tar.add(file_path, arcname)
+        
+        tar_buffer.seek(0)
+        encoded_filename = quote(f"{folder_name}.tar")
+        
+        return Response(
+            tar_buffer.getvalue(),
+            mimetype='application/x-tar',
+            headers={
+                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+                'Content-Length': str(tar_buffer.getbuffer().nbytes)
+            }
+        )
+    else:
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, folder_path)
+                    zip_file.write(file_path, arcname)
+        
+        zip_buffer.seek(0)
+        encoded_filename = quote(f"{folder_name}.zip")
+        
+        return Response(
+            zip_buffer.getvalue(),
+            mimetype='application/zip',
+            headers={
+                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+                'Content-Length': str(zip_buffer.getbuffer().nbytes)
+            }
+        )
+
+@app.route('/api/messages/folder/<folder_id>/files', methods=['GET'])
+@login_required
+def get_folder_files(folder_id):
+    user_id = session['user_id']
     
-    return Response(
-        zip_buffer.getvalue(),
-        mimetype='application/zip',
-        headers={
-            'Content-Disposition': f'attachment; filename="{folder_name}.zip"',
-            'Content-Length': str(zip_buffer.getbuffer().nbytes)
-        }
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT id, filename, saved_name, file_size, relative_path FROM messages 
+        WHERE folder_id = ? AND user_id = ? AND msg_type = 'folder_file'
+    ''', (folder_id, user_id))
+    records = cursor.fetchall()
+    conn.close()
+    
+    files = []
+    for record in records:
+        files.append({
+            'id': record['id'],
+            'filename': record['filename'],
+            'file_size': record['file_size'],
+            'relative_path': record['relative_path'],
+            'saved_name': record['saved_name']
+        })
+    
+    return jsonify({'files': files})
+
+@app.route('/api/messages/folder/<folder_id>/file/<int:file_id>', methods=['GET'])
+@login_required
+def download_folder_file(folder_id, file_id):
+    user_id = session['user_id']
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM messages WHERE id = ? AND folder_id = ? AND user_id = ? AND msg_type = 'folder_file'
+    ''', (file_id, folder_id, user_id))
+    record = cursor.fetchone()
+    conn.close()
+    
+    if not record:
+        return jsonify({'error': '文件不存在或无权访问'}), 404
+    
+    file_path = record['saved_name']
+    
+    if not os.path.exists(file_path):
+        return jsonify({'error': '文件不存在'}), 404
+    
+    from flask import send_file
+    import mimetypes
+    
+    mimetype, _ = mimetypes.guess_type(record['filename'])
+    if mimetype is None:
+        mimetype = 'application/octet-stream'
+    
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=record['filename'],
+        mimetype=mimetype
     )
 
 @app.route('/api/messages/file/<int:msg_id>', methods=['GET'])

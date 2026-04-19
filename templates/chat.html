@@ -206,6 +206,38 @@
         </div>
     </div>
     
+    <div class="download-options-modal" id="downloadOptionsModal" role="dialog" aria-modal="true" aria-labelledby="downloadOptionsTitle">
+        <div class="download-options-content">
+            <div class="download-options-header">
+                <h3 id="downloadOptionsTitle">选择下载格式</h3>
+                <button class="download-options-close" id="downloadOptionsClose" aria-label="关闭">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="download-options-body">
+                <p class="download-options-desc">请选择文件夹的下载格式：</p>
+                <div class="download-options-list">
+                    <button class="download-option-btn" data-format="zip">
+                        <span class="download-option-icon">📦</span>
+                        <span class="download-option-info">
+                            <strong>ZIP 压缩包</strong>
+                            <span>通用格式，Windows/Mac/Linux 都支持</span>
+                        </span>
+                    </button>
+                    <button class="download-option-btn" data-format="tar">
+                        <span class="download-option-icon">📁</span>
+                        <span class="download-option-info">
+                            <strong>TAR 归档文件</strong>
+                            <span>保留原始文件权限，适合 Linux/Mac</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         const chatContainer = document.getElementById('chatContainer');
         const chatMessages = document.getElementById('chatMessages');
@@ -253,6 +285,11 @@
         const filePreviewHeader = document.getElementById('filePreviewHeader');
         const filePreviewResizeHandle = document.getElementById('filePreviewResizeHandle');
         const filePreviewFitBtn = document.getElementById('filePreviewFitBtn');
+        const downloadOptionsModal = document.getElementById('downloadOptionsModal');
+        const downloadOptionsClose = document.getElementById('downloadOptionsClose');
+        const downloadOptionBtns = document.querySelectorAll('.download-option-btn');
+        
+        let currentDownloadFolder = null;
         
         let lastMsgId = 0;
         let currentMsgId = null;
@@ -632,37 +669,50 @@
         }
         
         async function sendFile(file, relativePath = null) {
+            const tempId = 'temp-' + Date.now();
+            const tempMsg = {
+                id: tempId,
+                type: 'file',
+                filename: relativePath || file.name,
+                file_size: file.size,
+                file_id: null,
+                relative_path: relativePath,
+                time: new Date().toISOString()
+            };
+            
+            const msgEl = createUploadingMessage(tempMsg, file.name);
+            chatMessages.appendChild(msgEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
             const formData = new FormData();
             formData.append('file', file);
             if (relativePath) {
                 formData.append('relative_path', relativePath);
             }
             
-            showProgress('上传文件中...');
-            
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 xhr.upload.onprogress = (e) => {
                     if (e.lengthComputable) {
-                        const percent = (e.loaded / e.total) * 100;
-                        updateProgress(percent, `${formatFileSize(e.loaded)} / ${formatFileSize(e.total)}`);
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        updateMessageProgress(msgEl, percent, percent >= 100 ? 'processing' : 'uploading');
                     }
                 };
                 xhr.onload = () => {
-                    hideProgress();
                     if (xhr.status === 201) {
                         const data = JSON.parse(xhr.responseText);
-                        addMessage(data.msg);
+                        replaceWithRealMessage(msgEl, data.msg);
                         showNotification('发送成功', 'success');
                         resolve(data);
                     } else {
+                        msgEl.remove();
                         const data = JSON.parse(xhr.responseText);
                         showNotification(data.error || '发送失败', 'error');
                         reject(data);
                     }
                 };
                 xhr.onerror = () => {
-                    hideProgress();
+                    msgEl.remove();
                     showNotification('网络错误', 'error');
                     reject(new Error('网络错误'));
                 };
@@ -680,14 +730,31 @@
             }
             
             var folderName = files[0].webkitRelativePath.split('/')[0];
-            showProgress(`上传文件夹 "${folderName}" 中...`);
-            
-            const formData = new FormData();
-            formData.append('folder_name', folderName);
+            const tempId = 'temp-' + Date.now();
             
             let totalSize = 0;
             for (let i = 0; i < files.length; i++) {
                 totalSize += files[i].size;
+            }
+            
+            const tempMsg = {
+                id: tempId,
+                type: 'folder',
+                filename: folderName,
+                file_size: totalSize,
+                file_count: files.length,
+                folder_id: null,
+                time: new Date().toISOString()
+            };
+            
+            const msgEl = createUploadingMessage(tempMsg, folderName, true);
+            chatMessages.appendChild(msgEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            const formData = new FormData();
+            formData.append('folder_name', folderName);
+            
+            for (let i = 0; i < files.length; i++) {
                 formData.append('files[]', files[i], files[i].webkitRelativePath);
             }
             
@@ -695,26 +762,25 @@
                 const xhr = new XMLHttpRequest();
                 xhr.upload.onprogress = (e) => {
                     if (e.lengthComputable) {
-                        const percent = (e.loaded / e.total) * 100;
-                        updateProgress(percent, `${formatFileSize(e.loaded)} / ${formatFileSize(e.total)}`);
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        updateMessageProgress(msgEl, percent, percent >= 100 ? 'processing' : 'uploading');
                     }
                 };
                 xhr.onload = () => {
-                    hideProgress();
                     if (xhr.status === 201) {
                         const data = JSON.parse(xhr.responseText);
-                        addMessage(data.msg);
+                        replaceWithRealMessage(msgEl, data.msg);
                         showNotification('文件夹上传成功', 'success');
                         resolve(data);
                     } else {
+                        msgEl.remove();
                         const data = JSON.parse(xhr.responseText);
                         showNotification(data.error || '上传失败', 'error');
                         reject(data);
                     }
                 };
                 xhr.onerror = () => {
-                    hideProgress();
-                    console.error('Upload error:', error);
+                    msgEl.remove();
                     showNotification('网络错误', 'error');
                     reject(new Error('网络错误'));
                 };
@@ -723,37 +789,166 @@
             });
         }
         
-        async function deleteMessage(msgId) {
-            try {
-                const response = await fetch(`/api/messages/${msgId}`, {
-                    method: 'DELETE'
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    const msgEl = chatMessages.querySelector(`[data-id="${msgId}"]`);
-                    if (msgEl) {
-                        msgEl.style.animation = 'fadeOut 0.3s ease';
-                        setTimeout(() => msgEl.remove(), 300);
-                    }
-                    showNotification('已删除', 'success');
-                } else {
-                    showNotification(data.error || '删除失败', 'error');
-                }
-            } catch (error) {
-                showNotification('网络错误', 'error');
+        function createUploadingMessage(msg, displayName, isFolder = false) {
+            const div = document.createElement('div');
+            div.className = 'message uploading-message';
+            div.dataset.tempId = msg.id;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'msg-time';
+            timeDiv.textContent = formatTime(msg.time);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'msg-content';
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'msg-bubble has-file uploading';
+            
+            if (isFolder) {
+                bubbleDiv.innerHTML = `
+                    <div class="msg-upload-overlay">
+                        <div class="msg-upload-progress">
+                            <svg viewBox="0 0 48 48">
+                                <circle class="progress-bg" cx="24" cy="24" r="22"/>
+                                <circle class="progress-bar" cx="24" cy="24" r="22"/>
+                            </svg>
+                            <span class="msg-upload-percent">0%</span>
+                        </div>
+                    </div>
+                    <div class="msg-file msg-folder">
+                        <span class="file-icon">📁</span>
+                        <div class="file-info">
+                            <span class="file-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
+                            <span class="file-size">${msg.file_count} 个文件 · ${formatFileSize(msg.file_size)}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                bubbleDiv.innerHTML = `
+                    <div class="msg-upload-overlay">
+                        <div class="msg-upload-progress">
+                            <svg viewBox="0 0 48 48">
+                                <circle class="progress-bg" cx="24" cy="24" r="22"/>
+                                <circle class="progress-bar" cx="24" cy="24" r="22"/>
+                            </svg>
+                            <span class="msg-upload-percent">0%</span>
+                        </div>
+                    </div>
+                    <div class="msg-file">
+                        <span class="file-icon">${getFileIcon(displayName)}</span>
+                        <div class="file-info">
+                            <span class="file-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
+                            <span class="file-size">${formatFileSize(msg.file_size)}</span>
+                        </div>
+                    </div>
+                `;
             }
+            
+            contentDiv.appendChild(bubbleDiv);
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'msg-avatar';
+            avatarDiv.innerHTML = `
+                <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+                    <circle cx="12" cy="12" r="12" fill="#07C160"/>
+                    <circle cx="12" cy="10" r="4" fill="white"/>
+                    <path d="M12 14c-4 0-7 2-7 4v2h14v-2c0-2-3-4-7-4z" fill="white"/>
+                </svg>
+            `;
+            
+            div.appendChild(timeDiv);
+            div.appendChild(contentDiv);
+            div.appendChild(avatarDiv);
+            
+            return div;
+        }
+        
+        function updateMessageProgress(msgEl, percent, status = 'uploading') {
+            const progressBar = msgEl.querySelector('.progress-bar');
+            const percentText = msgEl.querySelector('.msg-upload-percent');
+            
+            if (progressBar) {
+                const circumference = 2 * Math.PI * 22;
+                const offset = circumference - (Math.min(percent, 100) / 100) * circumference;
+                progressBar.style.strokeDashoffset = offset;
+                
+                if (status === 'processing') {
+                    progressBar.style.stroke = 'var(--secondary-color)';
+                    progressBar.style.animation = 'pulse 1s ease-in-out infinite';
+                }
+            }
+            
+            if (percentText) {
+                if (status === 'processing') {
+                    percentText.textContent = '处理中';
+                    percentText.style.color = 'var(--secondary-color)';
+                } else {
+                    percentText.textContent = percent + '%';
+                }
+            }
+        }
+        
+        function replaceWithRealMessage(tempEl, realMsg) {
+            const newEl = createMessageElement(realMsg);
+            tempEl.replaceWith(newEl);
+            lastMsgId = Math.max(lastMsgId, realMsg.id);
+        }
+        
+        function deleteMessage(msgId) {
+            const msgEl = chatMessages.querySelector(`[data-id="${msgId}"]`);
+            if (msgEl) {
+                msgEl.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => msgEl.remove(), 300);
+            }
+            selectedMsgs.delete(msgId);
+            updateSelectedCount();
+            
+            fetch(`/api/messages/${msgId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        showNotification(data.error || '删除失败', 'error');
+                    }
+                })
+                .catch(() => {
+                    showNotification('网络错误', 'error');
+                });
         }
         
         function downloadWithProgress(event, id, type, filename) {
             if (event) event.preventDefault();
             
-            const url = type === 'folder' ? `/api/messages/folder/${id}` : `/api/messages/file/${id}`;
-            const finalFilename = type === 'folder' ? `${filename}.zip` : filename;
+            if (type === 'folder') {
+                currentDownloadFolder = { id, filename };
+                downloadOptionsModal.style.display = 'flex';
+            } else {
+                const url = `/api/messages/file/${id}`;
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                
+                setTimeout(() => {
+                    a.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        showNotification(`已开始下载 ${filename}`, 'success');
+                    }, 500);
+                }, 200);
+            }
+        }
+        
+        function downloadFolderWithFormat(format) {
+            if (!currentDownloadFolder) return;
             
-            showProgress(`正在下载 ${filename}...`);
-            updateProgress(50, '请选择保存位置...');
+            const { id, filename } = currentDownloadFolder;
+            const url = `/api/messages/folder/${id}?format=${format}`;
+            const finalFilename = `${filename}.${format}`;
+            
+            downloadOptionsModal.style.display = 'none';
             
             const a = document.createElement('a');
             a.href = url;
@@ -766,8 +961,8 @@
                 
                 setTimeout(() => {
                     document.body.removeChild(a);
-                    hideProgress();
-                    showNotification(`已开始下载 ${filename}`, 'success');
+                    showNotification(`已开始下载 ${filename}.${format}`, 'success');
+                    currentDownloadFolder = null;
                 }, 500);
             }, 200);
         }
@@ -836,30 +1031,35 @@
             const confirmed = await showConfirm('批量删除', `确定删除选中的 ${selectedMsgs.size} 条消息吗？此操作不可撤销。`, true);
             if (!confirmed) return;
             
-            showProgress('批量删除中...');
+            const ids = Array.from(selectedMsgs);
+            const total = ids.length;
+            
+            ids.forEach(id => {
+                const msgEl = chatMessages.querySelector(`[data-id="${id}"]`);
+                if (msgEl) {
+                    msgEl.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => msgEl.remove(), 300);
+                }
+            });
+            
+            selectedMsgs.clear();
+            updateSelectedCount();
+            toggleBatchMode(false);
+            
+            showNotification(`正在删除 ${total} 条消息...`, 'info');
             
             let deleted = 0;
-            const total = selectedMsgs.size;
-            const ids = Array.from(selectedMsgs);
+            ids.forEach(id => {
+                fetch(`/api/messages/${id}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) deleted++;
+                    })
+                    .catch(e => console.error('Delete error:', e));
+            });
             
-            for (let i = 0; i < ids.length; i++) {
-                updateProgress((i / total) * 100, `正在删除... (${i + 1}/${total})`);
-                
-                try {
-                    const response = await fetch(`/api/messages/${ids[i]}`, { method: 'DELETE' });
-                    if (response.ok) {
-                        const msgEl = chatMessages.querySelector(`[data-id="${ids[i]}"]`);
-                        if (msgEl) msgEl.remove();
-                        deleted++;
-                    }
-                } catch (e) {
-                    console.error('Delete error:', e);
-                }
-            }
-            
-            hideProgress();
-            showNotification(`成功删除 ${deleted} 条消息`, 'success');
-            toggleBatchMode(false);
+            setTimeout(() => {
+                showNotification(`已删除 ${total} 条消息`, 'success');
+            }, 500);
         }
         
         async function searchMessages() {
@@ -1121,31 +1321,18 @@
             const confirmed = await showConfirm('批量删除', `确定删除选中的 ${selectedSearchMsgs.size} 条消息吗？此操作不可撤销。`, true);
             if (!confirmed) return;
             
-            showProgress('批量删除中...');
-            
-            let deleted = 0;
-            const total = selectedSearchMsgs.size;
             const ids = Array.from(selectedSearchMsgs);
+            const total = ids.length;
             
-            for (let i = 0; i < ids.length; i++) {
-                updateProgress((i / total) * 100, `正在删除... (${i + 1}/${total})`);
-                
-                try {
-                    const response = await fetch(`/api/messages/${ids[i]}`, { method: 'DELETE' });
-                    if (response.ok) {
-                        const item = searchResults.querySelector(`.search-item[data-id="${ids[i]}"]`);
-                        if (item) item.remove();
-                        const msgEl = chatMessages.querySelector(`[data-id="${ids[i]}"]`);
-                        if (msgEl) msgEl.remove();
-                        deleted++;
-                    }
-                } catch (e) {
-                    console.error('Delete error:', e);
+            ids.forEach(id => {
+                const item = searchResults.querySelector(`.search-item[data-id="${id}"]`);
+                if (item) item.remove();
+                const msgEl = chatMessages.querySelector(`[data-id="${id}"]`);
+                if (msgEl) {
+                    msgEl.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => msgEl.remove(), 300);
                 }
-            }
-            
-            hideProgress();
-            showNotification(`成功删除 ${deleted} 条消息`, 'success');
+            });
             
             selectedSearchMsgs.clear();
             updateSearchSelectedCount();
@@ -1155,6 +1342,17 @@
                 searchBatchPanel.style.display = 'none';
                 searchResults.innerHTML = '<div class="search-empty">未找到匹配的消息</div>';
             }
+            
+            showNotification(`正在删除 ${total} 条消息...`, 'info');
+            
+            ids.forEach(id => {
+                fetch(`/api/messages/${id}`, { method: 'DELETE' })
+                    .catch(e => console.error('Delete error:', e));
+            });
+            
+            setTimeout(() => {
+                showNotification(`已删除 ${total} 条消息`, 'success');
+            }, 500);
         }
         
         function clearSearch() {
@@ -1189,19 +1387,92 @@
             e.preventDefault();
         }
         
-        function handleDrop(e) {
+        async function handleDrop(e) {
             e.preventDefault();
             dragCounter = 0;
             chatContainer.classList.remove('drag-over');
             
             const items = e.dataTransfer.items;
-            const files = e.dataTransfer.files;
             
-            if (files.length > 0) {
-                for (let i = 0; i < files.length; i++) {
-                    sendFile(files[i]);
+            if (items) {
+                const entries = [];
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.kind === 'file') {
+                        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                        if (entry) {
+                            entries.push(entry);
+                        } else {
+                            const file = item.getAsFile();
+                            if (file) {
+                                sendFile(file);
+                            }
+                        }
+                    }
+                }
+                
+                if (entries.length > 0) {
+                    for (const entry of entries) {
+                        if (entry.isDirectory) {
+                            const files = await readDirectoryRecursively(entry, entry.name);
+                            if (files.length > 0) {
+                                sendFolder(files);
+                            }
+                        } else {
+                            entry.file(file => {
+                                sendFile(file, entry.fullPath.startsWith('/') ? entry.fullPath.slice(1) : entry.fullPath);
+                            });
+                        }
+                    }
+                }
+            } else {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    for (let i = 0; i < files.length; i++) {
+                        sendFile(files[i]);
+                    }
                 }
             }
+        }
+        
+        function readDirectoryRecursively(dirEntry, path = '') {
+            return new Promise((resolve) => {
+                const files = [];
+                const dirReader = dirEntry.createReader();
+                
+                function readEntries() {
+                    dirReader.readEntries(async (entries) => {
+                        if (entries.length === 0) {
+                            resolve(files);
+                            return;
+                        }
+                        
+                        for (const entry of entries) {
+                            const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                            
+                            if (entry.isDirectory) {
+                                const subFiles = await readDirectoryRecursively(entry, entryPath);
+                                files.push(...subFiles);
+                            } else {
+                                const file = await new Promise((res) => {
+                                    entry.file(f => {
+                                        Object.defineProperty(f, 'webkitRelativePath', {
+                                            value: entryPath,
+                                            writable: false
+                                        });
+                                        res(f);
+                                    });
+                                });
+                                files.push(file);
+                            }
+                        }
+                        
+                        readEntries();
+                    });
+                }
+                
+                readEntries();
+            });
         }
         
         sendBtn.addEventListener('click', sendTextMessage);
@@ -1305,6 +1576,25 @@
                     showNotification('已切换为适应模式', 'info');
                 }
             }
+        });
+        
+        downloadOptionsClose.addEventListener('click', () => {
+            downloadOptionsModal.style.display = 'none';
+            currentDownloadFolder = null;
+        });
+        
+        downloadOptionsModal.addEventListener('click', (e) => {
+            if (e.target === downloadOptionsModal) {
+                downloadOptionsModal.style.display = 'none';
+                currentDownloadFolder = null;
+            }
+        });
+        
+        downloadOptionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const format = btn.dataset.format;
+                downloadFolderWithFormat(format);
+            });
         });
         
         filePreviewClose.addEventListener('click', hideFilePreview);
