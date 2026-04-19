@@ -1,6 +1,27 @@
-uploads/user_1/72c2d270d17345058ddbc3a03c48861f_20260419020439
-uploads/user_1/8152ed90a895421abc1e68c5d7f7892c_20260419000452
-uploads/user_1/b520b65aae1e49efb3d771fe8f11a210_20260419020215
-uploads/user_1/ee9a98f98aae44ebaa1183d16300c83b_20260419015845
-.trae/rules/1.md
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Database
 database.sqlite
+
+# Uploads (user data)
+uploads/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Trae
+.trae/
