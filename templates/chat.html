@@ -7,7 +7,39 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
 </head>
 <body>
-    <div class="chat-container" id="chatContainer">
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>📂 我的柜子</h3>
+                <button id="addCategoryBtn" class="btn-add-category" title="新建目录" aria-label="新建目录">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="sidebar-search">
+                <input type="text" id="categorySearchInput" placeholder="搜索目录..." aria-label="搜索目录" autocomplete="off">
+                <svg class="sidebar-search-icon" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 001.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 00-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 005.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+            </div>
+            <div class="category-list" id="categoryList">
+                <div class="category-item active" data-category="" data-name="全部">
+                    <span class="category-icon">🏠</span>
+                    <span class="category-name">全部</span>
+                    <span class="category-count" id="totalCount">0</span>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <button id="toggleSidebarBtn" class="btn-toggle-sidebar" title="收起侧栏" aria-label="收起侧栏">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                    </svg>
+                </button>
+            </div>
+        </aside>
+        
+        <div class="chat-container" id="chatContainer">
         <header class="chat-header">
             <div class="header-info">
                 <div class="avatar">
@@ -43,8 +75,37 @@
         </header>
         
         <div class="search-panel" id="searchPanel" role="search">
-            <div class="search-input-wrap">
-                <input type="text" id="searchKeyword" placeholder="搜索关键字..." aria-label="搜索关键字">
+            <div class="search-row">
+                <div class="search-input-wrap search-keyword-wrap">
+                    <input type="text" id="searchKeyword" placeholder="搜索关键字..." aria-label="搜索关键字">
+                </div>
+                <div class="search-input-wrap search-category-wrap search-category-dropdown-wrap">
+                    <input type="text" id="searchCategoryName" placeholder="目录名关键词..." aria-label="目录名关键词" autocomplete="off">
+                    <div class="search-category-dropdown" id="searchCategoryDropdown">
+                        <div class="search-category-dropdown-list" id="searchCategoryDropdownList"></div>
+                        <div class="search-category-dropdown-actions">
+                            <button type="button" class="search-category-btn" id="searchCategorySelectAllBtn">全选</button>
+                            <button type="button" class="search-category-btn" id="searchCategoryDeselectAllBtn">取消全选</button>
+                            <button type="button" class="search-category-btn search-category-btn-primary" id="searchCategoryConfirmBtn">确定</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-row">
+                <div class="search-filter-wrap">
+                    <label class="search-filter-label">文件类型</label>
+                    <select id="searchFileType" aria-label="文件类型">
+                        <option value="">全部类型</option>
+                        <option value="text">文字消息</option>
+                        <option value="image">图片</option>
+                        <option value="document">文档</option>
+                        <option value="video">视频</option>
+                        <option value="audio">音频</option>
+                        <option value="archive">压缩包</option>
+                        <option value="folder">文件夹</option>
+                        <option value="other">其他文件</option>
+                    </select>
+                </div>
             </div>
             <div class="search-date-wrap">
                 <div class="date-field">
@@ -68,6 +129,12 @@
                 </label>
                 <span class="search-selected-count" id="searchSelectedCount" aria-live="polite">已选择 0 项</span>
                 <div class="search-batch-actions">
+                    <button id="searchBatchCopyBtn" class="btn-search-batch" disabled aria-label="批量复制">
+                        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                            <path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
+                        复制
+                    </button>
                     <button id="searchBatchDownloadBtn" class="btn-search-batch" disabled aria-label="批量下载">
                         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
                             <path fill="currentColor" d="M5 4h14v2H5V4zm7 18l6.67-7h-4.17V9h-5v6H5.33L12 22z"/>
@@ -93,6 +160,12 @@
                 </label>
                 <span class="selected-count" id="selectedCount" aria-live="polite">已选择 0 项</span>
                 <div class="batch-actions">
+                    <button id="batchCopyBtn" class="btn-batch" disabled aria-label="批量复制">
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
+                        批量复制
+                    </button>
                     <button id="batchDownloadBtn" class="btn-batch" disabled aria-label="批量下载">
                         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                             <path fill="currentColor" d="M5 4h14v2H5V4zm7 18l6.67-7h-4.17V9h-5v6H5.33L12 22z"/>
@@ -143,6 +216,27 @@
                 发送
             </button>
         </footer>
+        </div>
+    </div>
+    
+    <div class="category-modal" id="categoryModal" role="dialog" aria-modal="true">
+        <div class="category-modal-content">
+            <div class="category-modal-header">
+                <h3 id="categoryModalTitle">新建目录</h3>
+                <button class="category-modal-close" id="categoryModalClose" aria-label="关闭">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="category-modal-body">
+                <input type="text" id="categoryNameInput" placeholder="目录名称" maxlength="50" aria-label="目录名称">
+            </div>
+            <div class="category-modal-footer">
+                <button id="categoryCancelBtn" class="btn-category-cancel">取消</button>
+                <button id="categoryConfirmBtn" class="btn-category-confirm">确定</button>
+            </div>
+        </div>
     </div>
     
     <div class="context-menu" id="contextMenu" role="menu">
@@ -250,20 +344,30 @@
         const searchPanel = document.getElementById('searchPanel');
         const searchBtn = document.getElementById('searchBtn');
         const searchKeyword = document.getElementById('searchKeyword');
+        const searchCategoryName = document.getElementById('searchCategoryName');
+        const searchFileType = document.getElementById('searchFileType');
         const searchStartDate = document.getElementById('searchStartDate');
         const searchEndDate = document.getElementById('searchEndDate');
         const searchSubmit = document.getElementById('searchSubmit');
         const searchClear = document.getElementById('searchClear');
+        const categorySearchInput = document.getElementById('categorySearchInput');
+        const searchCategoryDropdown = document.getElementById('searchCategoryDropdown');
+        const searchCategoryDropdownList = document.getElementById('searchCategoryDropdownList');
+        const searchCategorySelectAllBtn = document.getElementById('searchCategorySelectAllBtn');
+        const searchCategoryDeselectAllBtn = document.getElementById('searchCategoryDeselectAllBtn');
+        const searchCategoryConfirmBtn = document.getElementById('searchCategoryConfirmBtn');
         const searchResults = document.getElementById('searchResults');
         const searchBatchPanel = document.getElementById('searchBatchPanel');
         const searchSelectAll = document.getElementById('searchSelectAll');
         const searchSelectedCount = document.getElementById('searchSelectedCount');
+        const searchBatchCopyBtn = document.getElementById('searchBatchCopyBtn');
         const searchBatchDownloadBtn = document.getElementById('searchBatchDownloadBtn');
         const searchBatchDeleteBtn = document.getElementById('searchBatchDeleteBtn');
         const batchBtn = document.getElementById('batchBtn');
         const batchPanel = document.getElementById('batchPanel');
         const selectAll = document.getElementById('selectAll');
         const selectedCount = document.getElementById('selectedCount');
+        const batchCopyBtn = document.getElementById('batchCopyBtn');
         const batchDownloadBtn = document.getElementById('batchDownloadBtn');
         const batchDeleteBtn = document.getElementById('batchDeleteBtn');
         const cancelBatchBtn = document.getElementById('cancelBatchBtn');
@@ -299,6 +403,24 @@
         let selectedSearchMsgs = new Set();
         let searchResultMessages = [];
         let dragCounter = 0;
+        let currentCategoryId = '';
+        let selectedCategoryIds = new Set();
+        let categories = [];
+        let searchSelectedCategoryIds = new Set();
+        let searchFilteredCategories = [];
+        
+        const sidebar = document.getElementById('sidebar');
+        const categoryList = document.getElementById('categoryList');
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+        const categoryModal = document.getElementById('categoryModal');
+        const categoryModalTitle = document.getElementById('categoryModalTitle');
+        const categoryNameInput = document.getElementById('categoryNameInput');
+        const categoryModalClose = document.getElementById('categoryModalClose');
+        const categoryCancelBtn = document.getElementById('categoryCancelBtn');
+        const categoryConfirmBtn = document.getElementById('categoryConfirmBtn');
+        
+        let editingCategoryId = null;
         
         function showNotification(message, type = 'info') {
             notification.textContent = message;
@@ -402,6 +524,7 @@
         function updateSelectedCount() {
             const count = selectedMsgs.size;
             selectedCount.textContent = `已选择 ${count} 项`;
+            batchCopyBtn.disabled = count === 0;
             batchDownloadBtn.disabled = count === 0;
             batchDeleteBtn.disabled = count === 0;
             selectAll.checked = count > 0 && count === document.querySelectorAll('.msg-checkbox').length;
@@ -499,15 +622,19 @@
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.className = 'msg-checkbox';
-            checkbox.style.display = isBatchMode ? 'inline-block' : 'none';
+            checkbox.style.display = (isBatchMode || isSearchMode) ? 'inline-block' : 'none';
             checkbox.setAttribute('aria-label', '选择此消息');
             checkbox.addEventListener('change', (e) => {
+                const msgId = String(msg.id);
                 if (e.target.checked) {
-                    selectedMsgs.add(msg.id);
+                    selectedMsgs.add(msgId);
+                    if (isSearchMode) selectedSearchMsgs.add(msgId);
                 } else {
-                    selectedMsgs.delete(msg.id);
+                    selectedMsgs.delete(msgId);
+                    if (isSearchMode) selectedSearchMsgs.delete(msgId);
                 }
                 updateSelectedCount();
+                if (isSearchMode) updateSearchSelectedCount();
             });
             
             const timeDiv = document.createElement('div');
@@ -604,17 +731,361 @@
             lastMsgId = Math.max(lastMsgId, msg.id);
         }
         
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const data = await response.json();
+                if (response.ok) {
+                    categories = data.categories;
+                    renderCategories();
+                }
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+            }
+        }
+        
+        function renderCategories(filteredCategories = null) {
+            const catsToRender = filteredCategories !== null ? filteredCategories : categories;
+            
+            const existingItems = categoryList.querySelectorAll('.category-item:not([data-category=""])');
+            existingItems.forEach(item => item.remove());
+            
+            catsToRender.forEach(cat => {
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.dataset.category = cat.id;
+                item.dataset.name = cat.name;
+                item.innerHTML = `
+                    <span class="category-icon">📁</span>
+                    <span class="category-name">${escapeHtml(cat.name)}</span>
+                    <span class="category-count" id="count-${cat.id}">0</span>
+                    <div class="category-actions">
+                        <button class="btn-category-action edit" data-id="${cat.id}" title="编辑">
+                            <svg viewBox="0 0 24 24" width="14" height="14">
+                                <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                            </svg>
+                        </button>
+                        <button class="btn-category-action delete" data-id="${cat.id}" title="删除">
+                            <svg viewBox="0 0 24 24" width="14" height="14">
+                                <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                categoryList.appendChild(item);
+            });
+        }
+        
+        function filterCategories(searchTerm) {
+            const filtered = searchTerm.trim() 
+                ? categories.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                : categories;
+            renderCategories(filtered);
+        }
+        
+        function showSearchCategoryDropdown(searchTerm) {
+            searchFilteredCategories = searchTerm.trim() 
+                ? categories.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                : [];
+            
+            if (searchFilteredCategories.length === 0) {
+                searchCategoryDropdownList.innerHTML = '<div class="search-category-dropdown-empty">未找到匹配的目录</div>';
+            } else {
+                searchSelectedCategoryIds.clear();
+                searchFilteredCategories.forEach(cat => {
+                    searchSelectedCategoryIds.add(String(cat.id));
+                });
+                
+                renderSearchCategoryDropdown();
+            }
+            
+            searchCategoryDropdown.classList.add('show');
+        }
+        
+        function hideSearchCategoryDropdown() {
+            searchCategoryDropdown.classList.remove('show');
+        }
+        
+        function renderSearchCategoryDropdown() {
+            searchCategoryDropdownList.innerHTML = searchFilteredCategories.map(cat => `
+                <div class="search-category-dropdown-item" data-id="${cat.id}">
+                    <input type="checkbox" class="search-category-checkbox" 
+                           data-id="${cat.id}" 
+                           ${searchSelectedCategoryIds.has(String(cat.id)) ? 'checked' : ''}>
+                    <span class="search-category-dropdown-item-name">${escapeHtml(cat.name)}</span>
+                </div>
+            `).join('');
+            
+            searchCategoryDropdownList.querySelectorAll('.search-category-dropdown-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.type !== 'checkbox') {
+                        const cb = item.querySelector('.search-category-checkbox');
+                        cb.checked = !cb.checked;
+                        const id = cb.dataset.id;
+                        if (cb.checked) {
+                            searchSelectedCategoryIds.add(id);
+                        } else {
+                            searchSelectedCategoryIds.delete(id);
+                        }
+                    }
+                });
+            });
+            
+            searchCategoryDropdownList.querySelectorAll('.search-category-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const id = e.target.dataset.id;
+                    if (e.target.checked) {
+                        searchSelectedCategoryIds.add(id);
+                    } else {
+                        searchSelectedCategoryIds.delete(id);
+                    }
+                });
+            });
+        }
+        
+        function applySearchCategoryFilter() {
+            if (searchSelectedCategoryIds.size === 0) {
+                showNotification('请至少选择一个目录', 'error');
+                return;
+            }
+            
+            const selectedNames = [];
+            searchSelectedCategoryIds.forEach(id => {
+                const cat = categories.find(c => String(c.id) === id);
+                if (cat) selectedNames.push(cat.name);
+            });
+            
+            searchCategoryName.value = selectedNames.join(', ');
+            hideSearchCategoryDropdown();
+        }
+        
+        function bindCategoryDropdownEvents() {
+            categoryDropdown.querySelectorAll('.category-dropdown-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const id = e.target.dataset.id;
+                    if (e.target.checked) {
+                        selectedCategoryIds.add(id);
+                    } else {
+                        selectedCategoryIds.delete(id);
+                    }
+                });
+            });
+            
+            categoryDropdown.querySelectorAll('.category-dropdown-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.type !== 'checkbox') {
+                        const cb = item.querySelector('.category-dropdown-checkbox');
+                        cb.checked = !cb.checked;
+                        const id = cb.dataset.id;
+                        if (cb.checked) {
+                            selectedCategoryIds.add(id);
+                        } else {
+                            selectedCategoryIds.delete(id);
+                        }
+                    }
+                });
+            });
+            
+            document.getElementById('categorySelectAllBtn').addEventListener('click', () => {
+                categoryDropdown.querySelectorAll('.category-dropdown-checkbox').forEach(cb => {
+                    cb.checked = true;
+                    selectedCategoryIds.add(cb.dataset.id);
+                });
+            });
+            
+            document.getElementById('categoryDeselectAllBtn').addEventListener('click', () => {
+                categoryDropdown.querySelectorAll('.category-dropdown-checkbox').forEach(cb => {
+                    cb.checked = false;
+                    selectedCategoryIds.delete(cb.dataset.id);
+                });
+            });
+            
+            document.getElementById('categoryFilterBtn').addEventListener('click', () => {
+                applyCategoryFilter();
+            });
+        }
+        
+        function applyCategoryFilter() {
+            if (selectedCategoryIds.size === 0) {
+                showNotification('请至少选择一个目录', 'error');
+                return;
+            }
+            
+            const selectedNames = [];
+            selectedCategoryIds.forEach(id => {
+                const cat = categories.find(c => String(c.id) === id);
+                if (cat) selectedNames.push(cat.name);
+            });
+            
+            searchCategoryName.value = selectedNames.join(', ');
+            categoryDropdown.style.display = 'none';
+            
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            currentCategoryId = '';
+            
+            if (isSearchMode) {
+                searchMessages();
+            } else {
+                loadMessages();
+            }
+        }
+        
+        function selectCategory(categoryId, categoryName) {
+            currentCategoryId = categoryId;
+            
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.category == categoryId) {
+                    item.classList.add('active');
+                }
+            });
+            
+            if (categoryId && categoryName) {
+                searchCategoryName.value = categoryName;
+            } else {
+                searchCategoryName.value = '';
+            }
+            
+            if (isSearchMode) {
+                searchMessages();
+            } else {
+                loadMessages();
+            }
+        }
+        
+        function openCategoryModal(editId = null) {
+            editingCategoryId = editId;
+            if (editId) {
+                categoryModalTitle.textContent = '编辑目录';
+                const cat = categories.find(c => c.id == editId);
+                categoryNameInput.value = cat ? cat.name : '';
+            } else {
+                categoryModalTitle.textContent = '新建目录';
+                categoryNameInput.value = '';
+            }
+            categoryModal.classList.add('show');
+            categoryNameInput.focus();
+        }
+        
+        function closeCategoryModal() {
+            categoryModal.classList.remove('show');
+            editingCategoryId = null;
+            categoryNameInput.value = '';
+        }
+        
+        async function saveCategory() {
+            const name = categoryNameInput.value.trim();
+            if (!name) {
+                showNotification('请输入目录名称', 'error');
+                return;
+            }
+            
+            try {
+                if (editingCategoryId) {
+                    const response = await fetch(`/api/categories/${editingCategoryId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    if (response.ok) {
+                        const cat = categories.find(c => c.id == editingCategoryId);
+                        if (cat) cat.name = name;
+                        renderCategories();
+                        showNotification('目录已更新', 'success');
+                    }
+                } else {
+                    const response = await fetch('/api/categories', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        categories.push(data.category);
+                        renderCategories();
+                        showNotification('目录已创建', 'success');
+                    }
+                }
+                closeCategoryModal();
+            } catch (error) {
+                showNotification('操作失败', 'error');
+            }
+        }
+        
+        async function deleteCategory(categoryId) {
+            if (!confirm('确定删除该目录吗？目录中的消息将移至"全部"中。')) return;
+            
+            try {
+                const response = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    categories = categories.filter(c => c.id != categoryId);
+                    renderCategories();
+                    if (currentCategoryId == categoryId) {
+                        selectCategory('', '全部');
+                    }
+                    showNotification('目录已删除', 'success');
+                }
+            } catch (error) {
+                showNotification('删除失败', 'error');
+            }
+        }
+        
+        addCategoryBtn.addEventListener('click', () => openCategoryModal());
+        toggleSidebarBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+        categoryModalClose.addEventListener('click', closeCategoryModal);
+        categoryCancelBtn.addEventListener('click', closeCategoryModal);
+        categoryConfirmBtn.addEventListener('click', saveCategory);
+        categoryNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') saveCategory();
+            if (e.key === 'Escape') closeCategoryModal();
+        });
+        categoryModal.addEventListener('click', (e) => {
+            if (e.target === categoryModal) closeCategoryModal();
+        });
+        
+        categoryList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.btn-category-action.edit');
+            const deleteBtn = e.target.closest('.btn-category-action.delete');
+            
+            if (editBtn) {
+                e.stopPropagation();
+                openCategoryModal(editBtn.dataset.id);
+                return;
+            }
+            if (deleteBtn) {
+                e.stopPropagation();
+                deleteCategory(deleteBtn.dataset.id);
+                return;
+            }
+            
+            const categoryItem = e.target.closest('.category-item');
+            if (categoryItem && !e.target.closest('.category-actions')) {
+                const categoryId = categoryItem.dataset.category;
+                const categoryName = categoryItem.dataset.name;
+                selectCategory(categoryId, categoryName);
+            }
+        });
+        
         async function loadMessages() {
             try {
-                const response = await fetch(`/api/messages?since=0`);
+                const url = currentCategoryId 
+                    ? `/api/messages?since=0&category_id=${currentCategoryId}`
+                    : `/api/messages?since=0`;
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 if (response.ok) {
+                    const categoryName = currentCategoryId 
+                        ? (categories.find(c => c.id == currentCategoryId)?.name || '目录')
+                        : '全部';
                     chatMessages.innerHTML = `
                         <div class="welcome-message">
-                            <div class="welcome-icon">📁</div>
-                            <h3>文件传输助手</h3>
-                            <p>在这里发送文字或文件，在其他设备上登录同一账号即可查看和下载</p>
+                            <div class="welcome-icon">${currentCategoryId ? '📁' : '🏠'}</div>
+                            <h3>${currentCategoryId ? categoryName : '文件传输助手'}</h3>
+                            <p>${currentCategoryId ? `当前目录：${categoryName}` : '在这里发送文字或文件，在其他设备上登录同一账号即可查看和下载'}</p>
                         </div>
                     `;
                     data.messages.forEach(msg => addMessage(msg));
@@ -631,7 +1102,10 @@
             if (isSearchMode) return;
             
             try {
-                const response = await fetch(`/api/messages?since=${lastMsgId}`);
+                const url = currentCategoryId 
+                    ? `/api/messages?since=${lastMsgId}&category_id=${currentCategoryId}`
+                    : `/api/messages?since=${lastMsgId}`;
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 if (response.ok && data.messages.length > 0) {
@@ -650,16 +1124,21 @@
             messageInput.style.height = 'auto';
             
             try {
+                const body = { content };
+                if (currentCategoryId) body.category_id = currentCategoryId;
+                
                 const response = await fetch('/api/messages/text', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content })
+                    body: JSON.stringify(body)
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    addMessage(data.msg);
+                    if (!currentCategoryId || data.msg.category_id == currentCategoryId) {
+                        addMessage(data.msg);
+                    }
                 } else {
                     showNotification(data.error || '发送失败', 'error');
                 }
@@ -689,6 +1168,9 @@
             if (relativePath) {
                 formData.append('relative_path', relativePath);
             }
+            if (currentCategoryId) {
+                formData.append('category_id', currentCategoryId);
+            }
             
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
@@ -701,7 +1183,11 @@
                 xhr.onload = () => {
                     if (xhr.status === 201) {
                         const data = JSON.parse(xhr.responseText);
-                        replaceWithRealMessage(msgEl, data.msg);
+                        if (!currentCategoryId || data.msg.category_id == currentCategoryId) {
+                            replaceWithRealMessage(msgEl, data.msg);
+                        } else {
+                            msgEl.remove();
+                        }
                         showNotification('发送成功', 'success');
                         resolve(data);
                     } else {
@@ -753,6 +1239,9 @@
             
             const formData = new FormData();
             formData.append('folder_name', folderName);
+            if (currentCategoryId) {
+                formData.append('category_id', currentCategoryId);
+            }
             
             for (let i = 0; i < files.length; i++) {
                 formData.append('files[]', files[i], files[i].webkitRelativePath);
@@ -769,7 +1258,11 @@
                 xhr.onload = () => {
                     if (xhr.status === 201) {
                         const data = JSON.parse(xhr.responseText);
-                        replaceWithRealMessage(msgEl, data.msg);
+                        if (!currentCategoryId || data.msg.category_id == currentCategoryId) {
+                            replaceWithRealMessage(msgEl, data.msg);
+                        } else {
+                            msgEl.remove();
+                        }
                         showNotification('文件夹上传成功', 'success');
                         resolve(data);
                     } else {
@@ -967,6 +1460,58 @@
             }, 200);
         }
         
+        function batchCopy() {
+            const textContents = [];
+            selectedMsgs.forEach(id => {
+                const msgEl = chatMessages.querySelector(`[data-id="${id}"]`);
+                if (msgEl && msgEl.dataset.type === 'text') {
+                    const textDiv = msgEl.querySelector('.msg-text');
+                    if (textDiv) {
+                        textContents.push(textDiv.textContent);
+                    }
+                }
+            });
+            
+            if (textContents.length === 0) {
+                showNotification('没有可复制的文字消息', 'error');
+                return;
+            }
+            
+            const textToCopy = textContents.join('\n\n---\n\n');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showNotification(`已复制 ${textContents.length} 条文字消息`, 'success');
+                }).catch(err => {
+                    fallbackCopy(textToCopy, textContents.length);
+                });
+            } else {
+                fallbackCopy(textToCopy, textContents.length);
+            }
+        }
+        
+        function fallbackCopy(text, count) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showNotification(`已复制 ${count} 条文字消息`, 'success');
+                } else {
+                    showNotification('复制失败', 'error');
+                }
+            } catch (e) {
+                showNotification('复制失败', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+        
         async function batchDownload() {
             const items = [];
             selectedMsgs.forEach(id => {
@@ -987,41 +1532,27 @@
                 return;
             }
             
-            const confirmed = await showConfirm('批量下载', `确定下载选中的 ${items.length} 个文件吗？`);
+            const confirmed = await showConfirm('批量下载', `确定下载选中的 ${items.length} 个文件吗？文件将开始下载，请查看浏览器下载列表。`);
             if (!confirmed) return;
             
-            showProgress('批量下载中...');
+            items.forEach((item, index) => {
+                setTimeout(() => {
+                    const url = item.type === 'folder' 
+                        ? `/api/messages/folder/${item.folderId}` 
+                        : `/api/messages/file/${item.fileId}`;
+                    const finalFilename = item.type === 'folder' ? `${item.filename}.zip` : item.filename;
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = finalFilename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }, index * 200);
+            });
             
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                updateProgress((i / items.length) * 100, `正在下载 ${item.filename} (${i + 1}/${items.length})`);
-                
-                const url = item.type === 'folder' 
-                    ? `/api/messages/folder/${item.folderId}` 
-                    : `/api/messages/file/${item.fileId}`;
-                const finalFilename = item.type === 'folder' ? `${item.filename}.zip` : item.filename;
-                
-                try {
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        const downloadUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = finalFilename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(downloadUrl);
-                        await new Promise(r => setTimeout(r, 500));
-                    }
-                } catch (e) {
-                    console.error('Download error:', e);
-                }
-            }
-            
-            hideProgress();
-            showNotification(`成功下载 ${items.length} 个文件`, 'success');
+            showNotification(`已开始下载 ${items.length} 个文件，请查看浏览器下载列表`, 'success');
             toggleBatchMode(false);
         }
         
@@ -1064,11 +1595,13 @@
         
         async function searchMessages() {
             const keyword = searchKeyword.value.trim();
+            const categoryNameKeyword = searchCategoryName.value.trim();
+            const fileType = searchFileType.value;
             const startDate = searchStartDate.value;
             const endDate = searchEndDate.value;
             
-            if (!keyword && !startDate && !endDate) {
-                showNotification('请输入搜索关键字或选择日期范围', 'error');
+            if (!keyword && !startDate && !endDate && !fileType && !categoryNameKeyword) {
+                showNotification('请至少输入一个搜索条件', 'error');
                 return;
             }
             
@@ -1080,13 +1613,28 @@
             isSearchMode = true;
             selectedSearchMsgs.clear();
             searchResultMessages = [];
-            searchResults.innerHTML = '<div class="search-loading">搜索中...</div>';
             searchBatchPanel.style.display = 'none';
             updateSearchSelectedCount();
+            
+            let searchTitle = '搜索结果';
+            if (categoryNameKeyword) searchTitle += ` · 目录: ${categoryNameKeyword}`;
+            if (fileType) searchTitle += ` · 类型: ${getFileTypeLabel(fileType)}`;
+            if (keyword) searchTitle += ` · 关键词: "${keyword}"`;
+            if (startDate || endDate) {
+                const dateRange = [];
+                if (startDate) dateRange.push(startDate);
+                dateRange.push('~');
+                if (endDate) dateRange.push(endDate);
+                searchTitle += ` · ${dateRange.join(' ')}`;
+            }
+            
+            chatMessages.innerHTML = `<div class="search-loading">搜索中...</div>`;
             
             try {
                 const params = new URLSearchParams();
                 if (keyword) params.append('keyword', keyword);
+                if (categoryNameKeyword) params.append('category_name', categoryNameKeyword);
+                if (fileType) params.append('file_type', fileType);
                 if (startDate) params.append('start_date', startDate);
                 if (endDate) params.append('end_date', endDate);
                 
@@ -1095,166 +1643,128 @@
                 
                 if (response.ok) {
                     if (data.messages.length === 0) {
-                        searchResults.innerHTML = '<div class="search-empty">未找到匹配的消息</div>';
+                        chatMessages.innerHTML = `
+                            <div class="welcome-message">
+                                <div class="welcome-icon">🔍</div>
+                                <h3>${searchTitle}</h3>
+                                <p>未找到匹配的消息</p>
+                            </div>
+                        `;
                     } else {
                         searchResultMessages = data.messages;
                         searchBatchPanel.style.display = 'flex';
                         
-                        searchResults.innerHTML = data.messages.map(msg => {
-                            const checkboxHtml = `<input type="checkbox" class="search-item-checkbox" data-id="${msg.id}" aria-label="选择此项">`;
-                            
-                            if (msg.type === 'text') {
-                                return `
-                                    <div class="search-item" data-id="${msg.id}" data-type="${msg.type}">
-                                        ${checkboxHtml}
-                                        <div class="search-item-main">
-                                            <div class="search-item-time">${formatDateTime(msg.time)}</div>
-                                            <div class="search-item-content">${escapeHtml(msg.content)}</div>
-                                        </div>
-                                        <div class="search-item-actions">
-                                            <button class="search-item-btn search-delete-btn" data-id="${msg.id}" title="删除" aria-label="删除">
-                                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                                    <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                `;
-                            } else if (msg.type === 'folder') {
-                                return `
-                                    <div class="search-item" data-id="${msg.id}" data-type="${msg.type}" data-folder-id="${msg.folder_id}" data-filename="${escapeHtml(msg.filename)}">
-                                        ${checkboxHtml}
-                                        <div class="search-item-main">
-                                            <div class="search-item-time">${formatDateTime(msg.time)}</div>
-                                            <div class="search-item-content">
-                                                <span class="file-icon-small">📁</span>
-                                                ${escapeHtml(msg.filename)} (${msg.file_count} 个文件)
-                                            </div>
-                                        </div>
-                                        <div class="search-item-actions">
-                                            <button class="search-item-btn search-download-btn" data-id="${msg.id}" data-type="folder" data-folder-id="${msg.folder_id}" data-filename="${escapeHtml(msg.filename)}" title="下载" aria-label="下载">
-                                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                                    <path fill="currentColor" d="M5 4h14v2H5V4zm7 18l6.67-7h-4.17V9h-5v6H5.33L12 22z"/>
-                                                </svg>
-                                            </button>
-                                            <button class="search-item-btn search-delete-btn" data-id="${msg.id}" title="删除" aria-label="删除">
-                                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                                    <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                `;
-                            } else {
-                                var displayName = msg.relative_path ? msg.relative_path : msg.filename;
-                                return `
-                                    <div class="search-item" data-id="${msg.id}" data-type="${msg.type}" data-file-id="${msg.file_id}" data-filename="${escapeHtml(msg.filename)}">
-                                        ${checkboxHtml}
-                                        <div class="search-item-main">
-                                            <div class="search-item-time">${formatDateTime(msg.time)}</div>
-                                            <div class="search-item-content">
-                                                <span class="file-icon-small">${getFileIcon(msg.filename)}</span>
-                                                ${escapeHtml(displayName)} (${formatFileSize(msg.file_size)})
-                                            </div>
-                                        </div>
-                                        <div class="search-item-actions">
-                                            <button class="search-item-btn search-download-btn" data-id="${msg.id}" data-type="file" data-file-id="${msg.file_id}" data-filename="${escapeHtml(msg.filename)}" title="下载" aria-label="下载">
-                                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                                    <path fill="currentColor" d="M5 4h14v2H5V4zm7 18l6.67-7h-4.17V9h-5v6H5.33L12 22z"/>
-                                                </svg>
-                                            </button>
-                                            <button class="search-item-btn search-delete-btn" data-id="${msg.id}" title="删除" aria-label="删除">
-                                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                                    <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                `;
-                            }
-                        }).join('');
+                        chatMessages.innerHTML = `
+                            <div class="welcome-message">
+                                <div class="welcome-icon">🔍</div>
+                                <h3>${searchTitle}</h3>
+                                <p>找到 ${data.messages.length} 条消息</p>
+                            </div>
+                        `;
                         
-                        bindSearchItemEvents();
+                        data.messages.forEach(msg => {
+                            addMessage(msg);
+                        });
+                        
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
                 } else {
-                    searchResults.innerHTML = '<div class="search-error">搜索失败</div>';
+                    chatMessages.innerHTML = `
+                        <div class="welcome-message">
+                            <div class="welcome-icon">❌</div>
+                            <h3>搜索失败</h3>
+                            <p>请稍后重试</p>
+                        </div>
+                    `;
                 }
             } catch (error) {
-                searchResults.innerHTML = '<div class="search-error">网络错误</div>';
+                chatMessages.innerHTML = `
+                    <div class="welcome-message">
+                        <div class="welcome-icon">❌</div>
+                        <h3>网络错误</h3>
+                        <p>请检查网络连接</p>
+                    </div>
+                `;
             }
         }
         
-        function bindSearchItemEvents() {
-            searchResults.querySelectorAll('.search-item-checkbox').forEach(cb => {
-                cb.addEventListener('change', (e) => {
-                    const id = e.target.dataset.id;
-                    if (e.target.checked) {
-                        selectedSearchMsgs.add(id);
-                    } else {
-                        selectedSearchMsgs.delete(id);
-                    }
-                    updateSearchSelectedCount();
-                });
-            });
-            
-            searchResults.querySelectorAll('.search-download-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const type = btn.dataset.type;
-                    const filename = btn.dataset.filename;
-                    if (type === 'folder') {
-                        downloadWithProgress(e, btn.dataset.folderId, 'folder', filename);
-                    } else {
-                        downloadWithProgress(e, btn.dataset.fileId, 'file', filename);
-                    }
-                });
-            });
-            
-            searchResults.querySelectorAll('.search-delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = btn.dataset.id;
-                    showConfirm('确认删除', '确定删除这条消息吗？此操作不可撤销。', true).then(confirmed => {
-                        if (confirmed) {
-                            deleteSearchItem(id);
-                        }
-                    });
-                });
-            });
+        function getFileTypeLabel(fileType) {
+            const labels = {
+                'text': '文字消息',
+                'image': '图片',
+                'document': '文档',
+                'video': '视频',
+                'audio': '音频',
+                'archive': '压缩包',
+                'folder': '文件夹',
+                'other': '其他文件'
+            };
+            return labels[fileType] || fileType;
         }
         
         function updateSearchSelectedCount() {
             const count = selectedSearchMsgs.size;
             searchSelectedCount.textContent = `已选择 ${count} 项`;
+            searchBatchCopyBtn.disabled = count === 0;
             searchBatchDownloadBtn.disabled = count === 0;
             searchBatchDeleteBtn.disabled = count === 0;
-            searchSelectAll.checked = count > 0 && count === searchResults.querySelectorAll('.search-item-checkbox').length;
+            searchSelectAll.checked = count > 0 && count === chatMessages.querySelectorAll('.msg-checkbox').length;
         }
         
         async function deleteSearchItem(id) {
             try {
                 const response = await fetch(`/api/messages/${id}`, { method: 'DELETE' });
                 if (response.ok) {
-                    const item = searchResults.querySelector(`.search-item[data-id="${id}"]`);
-                    if (item) {
-                        item.style.animation = 'fadeOut 0.3s ease';
-                        setTimeout(() => {
-                            item.remove();
-                            searchResultMessages = searchResultMessages.filter(m => m.id != id);
-                            selectedSearchMsgs.delete(id);
-                            updateSearchSelectedCount();
-                            if (searchResultMessages.length === 0) {
-                                searchBatchPanel.style.display = 'none';
-                                searchResults.innerHTML = '<div class="search-empty">未找到匹配的消息</div>';
-                            }
-                        }, 300);
-                    }
                     const msgEl = chatMessages.querySelector(`[data-id="${id}"]`);
-                    if (msgEl) msgEl.remove();
+                    if (msgEl) {
+                        msgEl.style.animation = 'fadeOut 0.3s ease';
+                        setTimeout(() => msgEl.remove(), 300);
+                    }
+                    searchResultMessages = searchResultMessages.filter(m => m.id != id);
+                    selectedSearchMsgs.delete(id);
+                    updateSearchSelectedCount();
+                    
+                    if (searchResultMessages.length === 0) {
+                        searchBatchPanel.style.display = 'none';
+                        chatMessages.innerHTML = `
+                            <div class="welcome-message">
+                                <div class="welcome-icon">🔍</div>
+                                <h3>搜索结果</h3>
+                                <p>所有匹配的消息已被删除</p>
+                            </div>
+                        `;
+                    }
                     showNotification('已删除', 'success');
                 }
             } catch (error) {
                 showNotification('删除失败', 'error');
+            }
+        }
+        
+        function searchBatchCopy() {
+            const textContents = [];
+            selectedSearchMsgs.forEach(id => {
+                const msg = searchResultMessages.find(m => String(m.id) === String(id));
+                if (msg && msg.type === 'text') {
+                    textContents.push(msg.content);
+                }
+            });
+            
+            if (textContents.length === 0) {
+                showNotification('没有可复制的文字消息', 'error');
+                return;
+            }
+            
+            const textToCopy = textContents.join('\n\n---\n\n');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showNotification(`已复制 ${textContents.length} 条文字消息`, 'success');
+                }).catch(err => {
+                    fallbackCopy(textToCopy, textContents.length);
+                });
+            } else {
+                fallbackCopy(textToCopy, textContents.length);
             }
         }
         
@@ -1278,41 +1788,27 @@
                 return;
             }
             
-            const confirmed = await showConfirm('批量下载', `确定下载选中的 ${items.length} 个文件吗？`);
+            const confirmed = await showConfirm('批量下载', `确定下载选中的 ${items.length} 个文件吗？文件将开始下载，请查看浏览器下载列表。`);
             if (!confirmed) return;
             
-            showProgress('批量下载中...');
+            items.forEach((item, index) => {
+                setTimeout(() => {
+                    const url = item.type === 'folder' 
+                        ? `/api/messages/folder/${item.folderId}` 
+                        : `/api/messages/file/${item.fileId}`;
+                    const finalFilename = item.type === 'folder' ? `${item.filename}.zip` : item.filename;
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = finalFilename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }, index * 200);
+            });
             
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                updateProgress((i / items.length) * 100, `正在下载 ${item.filename} (${i + 1}/${items.length})`);
-                
-                const url = item.type === 'folder' 
-                    ? `/api/messages/folder/${item.folderId}` 
-                    : `/api/messages/file/${item.fileId}`;
-                const finalFilename = item.type === 'folder' ? `${item.filename}.zip` : item.filename;
-                
-                try {
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        const downloadUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = finalFilename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(downloadUrl);
-                        await new Promise(r => setTimeout(r, 500));
-                    }
-                } catch (e) {
-                    console.error('Download error:', e);
-                }
-            }
-            
-            hideProgress();
-            showNotification(`成功下载 ${items.length} 个文件`, 'success');
+            showNotification(`已开始下载 ${items.length} 个文件，请查看浏览器下载列表`, 'success');
         }
         
         async function searchBatchDelete() {
@@ -1325,22 +1821,26 @@
             const total = ids.length;
             
             ids.forEach(id => {
-                const item = searchResults.querySelector(`.search-item[data-id="${id}"]`);
-                if (item) item.remove();
                 const msgEl = chatMessages.querySelector(`[data-id="${id}"]`);
                 if (msgEl) {
                     msgEl.style.animation = 'fadeOut 0.3s ease';
                     setTimeout(() => msgEl.remove(), 300);
                 }
+                searchResultMessages = searchResultMessages.filter(m => m.id != id);
             });
             
             selectedSearchMsgs.clear();
             updateSearchSelectedCount();
             
-            const remainingItems = searchResults.querySelectorAll('.search-item');
-            if (remainingItems.length === 0) {
+            if (searchResultMessages.length === 0) {
                 searchBatchPanel.style.display = 'none';
-                searchResults.innerHTML = '<div class="search-empty">未找到匹配的消息</div>';
+                chatMessages.innerHTML = `
+                    <div class="welcome-message">
+                        <div class="welcome-icon">🔍</div>
+                        <h3>搜索结果</h3>
+                        <p>所有匹配的消息已被删除</p>
+                    </div>
+                `;
             }
             
             showNotification(`正在删除 ${total} 条消息...`, 'info');
@@ -1357,8 +1857,10 @@
         
         function clearSearch() {
             searchKeyword.value = '';
+            searchFileType.value = '';
             searchStartDate.value = '';
             searchEndDate.value = '';
+            searchCategoryName.value = '';
             searchResults.innerHTML = '';
             searchBatchPanel.style.display = 'none';
             selectedSearchMsgs.clear();
@@ -1367,6 +1869,11 @@
             updateSearchSelectedCount();
             searchPanel.classList.remove('active');
             isSearchMode = false;
+            searchSelectedCategoryIds.clear();
+            searchFilteredCategories = [];
+            hideSearchCategoryDropdown();
+            
+            loadMessages();
         }
         
         function handleDragEnter(e) {
@@ -1523,11 +2030,83 @@
             }
         });
         
+        searchCategoryName.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (searchCategoryDropdown.classList.contains('show')) {
+                    applySearchCategoryFilter();
+                } else {
+                    searchMessages();
+                }
+            }
+            if (e.key === 'Escape') {
+                hideSearchCategoryDropdown();
+            }
+        });
+        
+        searchCategoryName.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            if (value) {
+                showSearchCategoryDropdown(value);
+            } else {
+                hideSearchCategoryDropdown();
+                searchSelectedCategoryIds.clear();
+            }
+        });
+        
+        searchCategoryName.addEventListener('focus', (e) => {
+            const value = e.target.value.trim();
+            if (value && !searchCategoryDropdown.classList.contains('show')) {
+                showSearchCategoryDropdown(value);
+            }
+        });
+        
+        searchCategorySelectAllBtn.addEventListener('click', () => {
+            searchCategoryDropdownList.querySelectorAll('.search-category-checkbox').forEach(cb => {
+                cb.checked = true;
+                searchSelectedCategoryIds.add(cb.dataset.id);
+            });
+        });
+        
+        searchCategoryDeselectAllBtn.addEventListener('click', () => {
+            searchCategoryDropdownList.querySelectorAll('.search-category-checkbox').forEach(cb => {
+                cb.checked = false;
+                searchSelectedCategoryIds.delete(cb.dataset.id);
+            });
+        });
+        
+        searchCategoryConfirmBtn.addEventListener('click', applySearchCategoryFilter);
+        
+        searchFileType.addEventListener('change', () => {
+            if (searchKeyword.value || searchCategoryName.value || searchStartDate.value || searchEndDate.value) {
+                searchMessages();
+            }
+        });
+        
+        categorySearchInput.addEventListener('input', (e) => {
+            selectedCategoryIds.clear();
+            filterCategories(e.target.value);
+        });
+        
+        categorySearchInput.addEventListener('focus', (e) => {
+            if (e.target.value.trim()) {
+                filterCategories(e.target.value);
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!categorySearchInput.contains(e.target) && !categoryDropdown.contains(e.target)) {
+                categoryDropdown.style.display = 'none';
+            }
+            if (!searchCategoryName.contains(e.target) && !searchCategoryDropdown.contains(e.target)) {
+                hideSearchCategoryDropdown();
+            }
+        });
+        
         searchSelectAll.addEventListener('change', (e) => {
-            const checkboxes = searchResults.querySelectorAll('.search-item-checkbox');
+            const checkboxes = chatMessages.querySelectorAll('.msg-checkbox');
             checkboxes.forEach(cb => {
                 cb.checked = e.target.checked;
-                const id = cb.dataset.id;
+                const id = cb.closest('.message').dataset.id;
                 if (e.target.checked) {
                     selectedSearchMsgs.add(id);
                 } else {
@@ -1537,6 +2116,7 @@
             updateSearchSelectedCount();
         });
         
+        searchBatchCopyBtn.addEventListener('click', searchBatchCopy);
         searchBatchDownloadBtn.addEventListener('click', searchBatchDownload);
         searchBatchDeleteBtn.addEventListener('click', searchBatchDelete);
         
@@ -1558,6 +2138,7 @@
             updateSelectedCount();
         });
         
+        batchCopyBtn.addEventListener('click', batchCopy);
         batchDownloadBtn.addEventListener('click', batchDownload);
         batchDeleteBtn.addEventListener('click', batchDelete);
         cancelBatchBtn.addEventListener('click', () => toggleBatchMode(false));
@@ -1737,6 +2318,7 @@
             }
         });
         
+        loadCategories();
         loadMessages();
         
         setInterval(pollNewMessages, 2000);
