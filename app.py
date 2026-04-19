@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import uuid
 import sqlite3
@@ -5,7 +6,8 @@ import zipfile
 import io
 from datetime import datetime
 from functools import wraps
-from flask import Flask, request, jsonify, session, send_file, render_template, redirect, url_for, Response
+from urllib.parse import quote
+from flask import Flask, request, jsonify, session, send_file, render_template, redirect, url_for, Response, stream_with_context, g
 import bcrypt
 
 app = Flask(__name__)
@@ -14,13 +16,40 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 app.config['DATABASE'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.sqlite')
 
+FILE_TYPE_EXTENSIONS = {
+    'image': {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff', '.tif'},
+    'document': {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.rtf', '.odt', '.ods', '.odp'},
+    'video': {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.3gp'},
+    'audio': {'.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg', '.wma', '.ape', '.aiff'},
+    'archive': {'.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.tgz'}
+}
+
+ALL_KNOWN_EXTENSIONS = set()
+for exts in FILE_TYPE_EXTENSIONS.values():
+    ALL_KNOWN_EXTENSIONS.update(exts)
+
+def get_file_type(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    for ftype, extensions in FILE_TYPE_EXTENSIONS.items():
+        if ext in extensions:
+            return ftype
+    return 'other'
+
 def get_db():
-    conn = sqlite3.connect(app.config['DATABASE'])
-    conn.row_factory = sqlite3.Row
-    return conn
+    if 'db' not in g:
+        g.db = sqlite3.connect(app.config['DATABASE'])
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+@app.teardown_appcontext
+def close_db(error):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 def init_db():
-    conn = get_db()
+    conn = sqlite3.connect(app.config['DATABASE'])
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -138,7 +167,6 @@ def register():
         cursor = conn.cursor()
         cursor.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', (username, password_hash))
         conn.commit()
-        conn.close()
         return jsonify({'message': '注册成功，请登录'}), 201
     except sqlite3.IntegrityError:
         return jsonify({'error': '用户名已存在'}), 400
@@ -161,7 +189,6 @@ def login():
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
     user = cursor.fetchone()
-    conn.close()
     
     if not user:
         return jsonify({'error': '用户名或密码错误'}), 401
@@ -192,7 +219,6 @@ def get_categories():
         ORDER BY created_at ASC
     ''', (user_id,))
     categories = cursor.fetchall()
-    conn.close()
     
     return jsonify({
         'categories': [{'id': c['id'], 'name': c['name'], 'parent_id': c['parent_id']} for c in categories]
@@ -221,7 +247,6 @@ def create_category():
     ''', (user_id, name, parent_id))
     conn.commit()
     category_id = cursor.lastrowid
-    conn.close()
     
     return jsonify({
         'message': '创建成功',
@@ -246,12 +271,10 @@ def update_category(category_id):
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM categories WHERE id = ? AND user_id = ?', (category_id, user_id))
     if not cursor.fetchone():
-        conn.close()
         return jsonify({'error': '目录不存在'}), 404
     
     cursor.execute('UPDATE categories SET name = ? WHERE id = ?', (name, category_id))
     conn.commit()
-    conn.close()
     
     return jsonify({'message': '更新成功'}), 200
 
@@ -264,14 +287,12 @@ def delete_category(category_id):
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM categories WHERE id = ? AND user_id = ?', (category_id, user_id))
     if not cursor.fetchone():
-        conn.close()
         return jsonify({'error': '目录不存在'}), 404
     
     cursor.execute('UPDATE messages SET category_id = NULL WHERE category_id = ?', (category_id,))
     cursor.execute('UPDATE categories SET parent_id = NULL WHERE parent_id = ?', (category_id,))
     cursor.execute('DELETE FROM categories WHERE id = ?', (category_id,))
     conn.commit()
-    conn.close()
     
     return jsonify({'message': '删除成功'}), 200
 
@@ -301,7 +322,6 @@ def get_messages():
     
     cursor.execute(query, params)
     messages = cursor.fetchall()
-    conn.close()
     
     msg_list = []
     for m in messages:
@@ -367,18 +387,15 @@ def search_messages():
             query += " AND m.msg_type = 'text' "
         elif file_type == 'folder':
             query += " AND m.msg_type = 'folder' "
-        elif file_type == 'image':
-            query += " AND m.msg_type = 'file' AND (m.filename LIKE '%.jpg' OR m.filename LIKE '%.jpeg' OR m.filename LIKE '%.png' OR m.filename LIKE '%.gif' OR m.filename LIKE '%.bmp' OR m.filename LIKE '%.webp' OR m.filename LIKE '%.svg') "
-        elif file_type == 'document':
-            query += " AND m.msg_type = 'file' AND (m.filename LIKE '%.pdf' OR m.filename LIKE '%.doc' OR m.filename LIKE '%.docx' OR m.filename LIKE '%.xls' OR m.filename LIKE '%.xlsx' OR m.filename LIKE '%.ppt' OR m.filename LIKE '%.pptx' OR m.filename LIKE '%.txt' OR m.filename LIKE '%.md') "
-        elif file_type == 'video':
-            query += " AND m.msg_type = 'file' AND (m.filename LIKE '%.mp4' OR m.filename LIKE '%.avi' OR m.filename LIKE '%.mkv' OR m.filename LIKE '%.mov' OR m.filename LIKE '%.wmv' OR m.filename LIKE '%.flv') "
-        elif file_type == 'audio':
-            query += " AND m.msg_type = 'file' AND (m.filename LIKE '%.mp3' OR m.filename LIKE '%.wav' OR m.filename LIKE '%.flac' OR m.filename LIKE '%.aac' OR m.filename LIKE '%.m4a' OR m.filename LIKE '%.ogg') "
-        elif file_type == 'archive':
-            query += " AND m.msg_type = 'file' AND (m.filename LIKE '%.zip' OR m.filename LIKE '%.rar' OR m.filename LIKE '%.7z' OR m.filename LIKE '%.tar' OR m.filename LIKE '%.gz') "
+        elif file_type in FILE_TYPE_EXTENSIONS:
+            extensions = FILE_TYPE_EXTENSIONS[file_type]
+            placeholders = ' OR '.join([f"m.filename LIKE ?" for _ in extensions])
+            query += f" AND m.msg_type = 'file' AND ({placeholders}) "
+            params.extend([f'%{ext}' for ext in extensions])
         elif file_type == 'other':
-            query += " AND m.msg_type = 'file' AND m.filename NOT LIKE '%.jpg' AND m.filename NOT LIKE '%.jpeg' AND m.filename NOT LIKE '%.png' AND m.filename NOT LIKE '%.gif' AND m.filename NOT LIKE '%.bmp' AND m.filename NOT LIKE '%.webp' AND m.filename NOT LIKE '%.svg' AND m.filename NOT LIKE '%.pdf' AND m.filename NOT LIKE '%.doc' AND m.filename NOT LIKE '%.docx' AND m.filename NOT LIKE '%.xls' AND m.filename NOT LIKE '%.xlsx' AND m.filename NOT LIKE '%.ppt' AND m.filename NOT LIKE '%.pptx' AND m.filename NOT LIKE '%.txt' AND m.filename NOT LIKE '%.md' AND m.filename NOT LIKE '%.mp4' AND m.filename NOT LIKE '%.avi' AND m.filename NOT LIKE '%.mkv' AND m.filename NOT LIKE '%.mov' AND m.filename NOT LIKE '%.wmv' AND m.filename NOT LIKE '%.flv' AND m.filename NOT LIKE '%.mp3' AND m.filename NOT LIKE '%.wav' AND m.filename NOT LIKE '%.flac' AND m.filename NOT LIKE '%.aac' AND m.filename NOT LIKE '%.m4a' AND m.filename NOT LIKE '%.ogg' AND m.filename NOT LIKE '%.zip' AND m.filename NOT LIKE '%.rar' AND m.filename NOT LIKE '%.7z' AND m.filename NOT LIKE '%.tar' AND m.filename NOT LIKE '%.gz' "
+            placeholders = ' OR '.join([f"m.filename LIKE ?" for _ in ALL_KNOWN_EXTENSIONS])
+            query += f" AND m.msg_type = 'file' AND NOT ({placeholders}) "
+            params.extend([f'%{ext}' for ext in ALL_KNOWN_EXTENSIONS])
     
     if date:
         query += ' AND DATE(m.created_at) = ? '
@@ -396,7 +413,6 @@ def search_messages():
     
     cursor.execute(query, params)
     messages = cursor.fetchall()
-    conn.close()
     
     msg_list = []
     for m in messages:
@@ -451,7 +467,6 @@ def send_text():
         msg_id = cursor.lastrowid
         cursor.execute('SELECT datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
-        conn.close()
         
         return jsonify({
             'message': '发送成功',
@@ -511,7 +526,6 @@ def send_file():
         msg_id = cursor.lastrowid
         cursor.execute('SELECT datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
-        conn.close()
         
         return jsonify({
             'message': '发送成功',
@@ -588,7 +602,6 @@ def send_folder():
         cursor.execute('SELECT datetime(created_at, \'+8 hours\') as created_at FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
         conn.commit()
-        conn.close()
         
         return jsonify({
             'message': '发送成功',
@@ -620,7 +633,6 @@ def download_folder(folder_id):
         SELECT * FROM messages WHERE folder_id = ? AND user_id = ? AND msg_type = 'folder'
     ''', (folder_id, user_id))
     record = cursor.fetchone()
-    conn.close()
     
     if not record:
         return jsonify({'error': '文件夹不存在或无权访问'}), 404
@@ -632,50 +644,53 @@ def download_folder(folder_id):
         return jsonify({'error': '文件夹不存在'}), 404
     
     download_format = request.args.get('format', 'zip')
+    encoded_filename = quote(folder_name)
     
-    from urllib.parse import quote
-    import tarfile
-    
-    if download_format == 'tar':
-        tar_buffer = io.BytesIO()
-        
-        with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
+    def generate_zip():
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             for root, dirs, files in os.walk(folder_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     arcname = os.path.relpath(file_path, folder_path)
-                    tar.add(file_path, arcname)
-        
+                    zf.write(file_path, arcname)
+        zip_buffer.seek(0)
+        while True:
+            chunk = zip_buffer.read(8192)
+            if not chunk:
+                break
+            yield chunk
+    
+    def generate_tar():
+        import tarfile
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode='w') as tf:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, folder_path)
+                    tf.add(file_path, arcname)
         tar_buffer.seek(0)
-        encoded_filename = quote(f"{folder_name}.tar")
-        
+        while True:
+            chunk = tar_buffer.read(8192)
+            if not chunk:
+                break
+            yield chunk
+    
+    if download_format == 'tar':
         return Response(
-            tar_buffer.getvalue(),
+            stream_with_context(generate_tar()),
             mimetype='application/x-tar',
             headers={
-                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
-                'Content-Length': str(tar_buffer.getbuffer().nbytes)
+                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}.tar"
             }
         )
     else:
-        zip_buffer = io.BytesIO()
-        
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for root, dirs, files in os.walk(folder_path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, folder_path)
-                    zip_file.write(file_path, arcname)
-        
-        zip_buffer.seek(0)
-        encoded_filename = quote(f"{folder_name}.zip")
-        
         return Response(
-            zip_buffer.getvalue(),
+            stream_with_context(generate_zip()),
             mimetype='application/zip',
             headers={
-                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
-                'Content-Length': str(zip_buffer.getbuffer().nbytes)
+                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}.zip"
             }
         )
 
@@ -691,7 +706,6 @@ def get_folder_files(folder_id):
         WHERE folder_id = ? AND user_id = ? AND msg_type = 'folder_file'
     ''', (folder_id, user_id))
     records = cursor.fetchall()
-    conn.close()
     
     files = []
     for record in records:
@@ -716,7 +730,6 @@ def download_folder_file(folder_id, file_id):
         SELECT * FROM messages WHERE id = ? AND folder_id = ? AND user_id = ? AND msg_type = 'folder_file'
     ''', (file_id, folder_id, user_id))
     record = cursor.fetchone()
-    conn.close()
     
     if not record:
         return jsonify({'error': '文件不存在或无权访问'}), 404
@@ -751,7 +764,6 @@ def download_file(msg_id):
         SELECT * FROM messages WHERE id = ? AND user_id = ? AND msg_type = 'file'
     ''', (msg_id, user_id))
     record = cursor.fetchone()
-    conn.close()
     
     if not record:
         return jsonify({'error': '文件不存在或无权访问'}), 404
@@ -791,7 +803,6 @@ def delete_message(msg_id):
     record = cursor.fetchone()
     
     if not record:
-        conn.close()
         return jsonify({'error': '消息不存在或无权删除'}), 404
     
     if record['msg_type'] == 'file':
@@ -808,7 +819,6 @@ def delete_message(msg_id):
     
     cursor.execute('DELETE FROM messages WHERE id = ?', (msg_id,))
     conn.commit()
-    conn.close()
     
     return jsonify({'message': '删除成功'}), 200
 
@@ -819,6 +829,20 @@ def get_user_info():
         'user_id': session['user_id'],
         'username': session['username']
     }), 200
+
+@app.after_request
+def add_cache_headers(response):
+    if 'static' in request.path or request.path.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot')):
+        response.cache_control.max_age = 86400
+        response.cache_control.public = True
+    return response
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
 
 if __name__ == '__main__':
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
