@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件管理 - 文件传输助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="header">
+            <h1>
+                <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true" style="vertical-align: middle; margin-right: 8px;">
+                    <circle cx="24" cy="24" r="22" fill="#07C160"/>
+                    <path d="M16 18h16v2H16zm0 5h16v2H16zm0 5h10v2H16z" fill="white"/>
+                </svg>
+                文件传输助手
+            </h1>
+            <div class="user-info">
+                <span id="welcomeText">欢迎，{{ username }}</span>
+                <button id="logoutBtn" class="btn btn-secondary btn-small">
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                    退出登录
+                </button>
+            </div>
+        </header>
+        
+        <main class="main-content">
+            <section class="upload-section">
+                <h2>
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="vertical-align: middle; margin-right: 8px;">
+                        <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+                    </svg>
+                    上传文件
+                </h2>
+                <div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-label="点击或拖拽文件到此处上传">
+                    <input type="file" id="fileInput" style="display: none;" aria-hidden="true">
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <span class="upload-icon">📁</span>
+                        <p>点击或拖拽文件到此处上传</p>
+                        <p class="upload-hint">支持各类文件，最大 100MB</p>
+                    </div>
+                    <div class="upload-progress" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="progressText">上传中...</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="files-section">
+                <div class="files-section-header">
+                    <h2>
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="vertical-align: middle; margin-right: 8px;">
+                            <path fill="currentColor" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
+                        </svg>
+                        我的文件
+                    </h2>
+                    <button id="refreshBtn" class="btn btn-secondary btn-small" aria-label="刷新列表">
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        </svg>
+                        刷新
+                    </button>
+                </div>
+                <div class="files-header">
+                    <span class="col-name">文件名</span>
+                    <span class="col-size">大小</span>
+                    <span class="col-time">上传时间</span>
+                    <span class="col-actions">操作</span>
+                </div>
+                <div class="files-list" id="filesList" role="list" aria-label="文件列表">
+                    <div class="loading" role="status">
+                        <div class="loading-spinner"></div>
+                        <span>加载中...</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <div class="notification" id="notification" role="alert" aria-live="polite"></div>
+    </div>
+    
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filesList = document.getElementById('filesList');
+        const notification = document.getElementById('notification');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const refreshBtn = document.getElementById('refreshBtn');
+        
+        function showNotification(message, type = 'info') {
+            notification.textContent = message;
+            notification.className = 'notification ' + type;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN');
+        }
+        
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                pdf: '📕', doc: '📘', docx: '📘',
+                xls: '📗', xlsx: '📗',
+                ppt: '📙', pptx: '📙',
+                zip: '📦', rar: '📦', '7z': '📦', tar: '📦', gz: '📦',
+                mp3: '🎵', wav: '🎵', flac: '🎵', m4a: '🎵',
+                mp4: '🎬', avi: '🎬', mkv: '🎬', mov: '🎬',
+                jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', bmp: '🖼️',
+                txt: '📄', md: '📄',
+                py: '🐍', js: '📜', ts: '📜', html: '🌐', css: '🎨', json: '📋'
+            };
+            return icons[ext] || '📎';
+        }
+        
+        async function loadFiles() {
+            filesList.innerHTML = `
+                <div class="loading" role="status">
+                    <div class="loading-spinner"></div>
+                    <span>加载中...</span>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    renderFiles(data.files);
+                } else {
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        showNotification('加载文件列表失败', 'error');
+                        filesList.innerHTML = '<div class="empty-state">加载失败，请重试</div>';
+                    }
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+                filesList.innerHTML = '<div class="empty-state">网络错误，请重试</div>';
+            }
+        }
+        
+        function renderFiles(files) {
+            if (files.length === 0) {
+                filesList.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true" style="color: #ccc; margin-bottom: 16px;">
+                            <path fill="currentColor" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
+                        </svg>
+                        <p>暂无文件</p>
+                        <p class="upload-hint">点击上方区域上传文件</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filesList.innerHTML = files.map(file => `
+                <div class="file-item" data-id="${file.id}" role="listitem">
+                    <span class="col-name file-name" title="${file.filename}">
+                        <span class="file-icon-small">${getFileIcon(file.filename)}</span>
+                        ${file.filename}
+                    </span>
+                    <span class="col-size">${formatFileSize(file.file_size)}</span>
+                    <span class="col-time">${formatDate(file.upload_time)}</span>
+                    <span class="col-actions">
+                        <button class="btn btn-small btn-primary" onclick="downloadFile(${file.id})" aria-label="下载 ${file.filename}">
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            </svg>
+                            下载
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deleteFile(${file.id}, '${file.filename}')" aria-label="删除 ${file.filename}">
+                            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                            删除
+                        </button>
+                    </span>
+                </div>
+            `).join('');
+        }
+        
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            uploadPlaceholder.style.display = 'none';
+            uploadProgress.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.textContent = '上传中...';
+            
+            try {
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        progressFill.style.width = percent + '%';
+                        progressText.textContent = `上传中... ${percent}%`;
+                    }
+                });
+                
+                xhr.addEventListener('load', () => {
+                    uploadPlaceholder.style.display = 'block';
+                    uploadProgress.style.display = 'none';
+                    
+                    if (xhr.status === 201) {
+                        showNotification('文件上传成功', 'success');
+                        loadFiles();
+                    } else {
+                        const data = JSON.parse(xhr.responseText);
+                        showNotification(data.error || '上传失败', 'error');
+                    }
+                });
+                
+                xhr.addEventListener('error', () => {
+                    uploadPlaceholder.style.display = 'block';
+                    uploadProgress.style.display = 'none';
+                    showNotification('网络错误', 'error');
+                });
+                
+                xhr.open('POST', '/api/files/upload');
+                xhr.send(formData);
+                
+            } catch (error) {
+                uploadPlaceholder.style.display = 'block';
+                uploadProgress.style.display = 'none';
+                showNotification('上传失败', 'error');
+            }
+        }
+        
+        function downloadFile(fileId) {
+            window.location.href = `/api/files/download/${fileId}`;
+        }
+        
+        async function deleteFile(fileId, filename) {
+            if (!confirm(`确定要删除文件 "${filename}" 吗？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('文件删除成功', 'success');
+                    loadFiles();
+                } else {
+                    showNotification(data.error || '删除失败', 'error');
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+            }
+        }
+        
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                uploadFile(e.target.files[0]);
+            }
+        });
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length > 0) {
+                uploadFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        refreshBtn.addEventListener('click', loadFiles);
+        
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login';
+            } catch (error) {
+                window.location.href = '/login';
+            }
+        });
+        
+        loadFiles();
+    </script>
+</body>
+</html>

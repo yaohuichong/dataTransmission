@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 文件传输助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <svg viewBox="0 0 48 48" width="56" height="56" aria-hidden="true">
+                        <circle cx="24" cy="24" r="22" fill="#07C160"/>
+                        <path d="M16 18h16v2H16zm0 5h16v2H16zm0 5h10v2H16z" fill="white"/>
+                    </svg>
+                </div>
+                <h1>文件传输助手</h1>
+                <p class="subtitle">安全便捷的跨设备文件传输工具</p>
+            </div>
+            
+            <form id="loginForm" novalidate>
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="username" name="username" required 
+                               placeholder="请输入用户名" autocomplete="username"
+                               aria-describedby="username-hint">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" required 
+                               placeholder="请输入密码" autocomplete="current-password"
+                               aria-describedby="password-hint">
+                        <button type="button" class="password-toggle" id="togglePassword"
+                                aria-label="显示密码" tabindex="-1">
+                            <svg class="icon-eye" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="display:none">
+                                <path fill="currentColor" d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="rememberMe" name="remember">
+                        <span>记住我</span>
+                    </label>
+                </div>
+                
+                <div class="error-message" id="errorMessage" role="alert" aria-live="polite"></div>
+                
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="btn-text">登录</span>
+                </button>
+            </form>
+            
+            <div class="auth-link">
+                还没有账号？<a href="{{ url_for('register_page') }}">立即注册</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('togglePassword');
+        const errorMessage = document.getElementById('errorMessage');
+        const submitBtn = document.getElementById('submitBtn');
+        const rememberMe = document.getElementById('rememberMe');
+        
+        const iconEye = togglePassword.querySelector('.icon-eye');
+        const iconEyeOff = togglePassword.querySelector('.icon-eye-off');
+        
+        function togglePasswordVisibility() {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            
+            if (type === 'text') {
+                iconEye.style.display = 'none';
+                iconEyeOff.style.display = 'block';
+                togglePassword.setAttribute('aria-label', '隐藏密码');
+            } else {
+                iconEye.style.display = 'block';
+                iconEyeOff.style.display = 'none';
+                togglePassword.setAttribute('aria-label', '显示密码');
+            }
+        }
+        
+        togglePassword.addEventListener('click', togglePasswordVisibility);
+        
+        function loadSavedCredentials() {
+            const savedUsername = localStorage.getItem('rememberedUsername');
+            if (savedUsername) {
+                usernameInput.value = savedUsername;
+                rememberMe.checked = true;
+            }
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            errorMessage.style.animation = 'none';
+            errorMessage.offsetHeight;
+            errorMessage.style.animation = 'shake 0.4s ease';
+        }
+        
+        function hideError() {
+            errorMessage.textContent = '';
+            errorMessage.style.display = 'none';
+        }
+        
+        function setLoading(loading) {
+            if (loading) {
+                submitBtn.classList.add('btn-loading');
+                submitBtn.disabled = true;
+            } else {
+                submitBtn.classList.remove('btn-loading');
+                submitBtn.disabled = false;
+            }
+        }
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            hideError();
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            
+            if (!username) {
+                showError('请输入用户名');
+                usernameInput.focus();
+                return;
+            }
+            
+            if (!password) {
+                showError('请输入密码');
+                passwordInput.focus();
+                return;
+            }
+            
+            if (rememberMe.checked) {
+                localStorage.setItem('rememberedUsername', username);
+            } else {
+                localStorage.removeItem('rememberedUsername');
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.location.href = '/chat';
+                } else {
+                    showError(data.error || '登录失败');
+                }
+            } catch (error) {
+                showError('网络错误，请稍后重试');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        usernameInput.addEventListener('input', hideError);
+        passwordInput.addEventListener('input', hideError);
+        
+        loadSavedCredentials();
+        
+        usernameInput.focus();
+    </script>
+</body>
+</html>

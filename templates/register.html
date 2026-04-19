@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 文件传输助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <svg viewBox="0 0 48 48" width="56" height="56" aria-hidden="true">
+                        <circle cx="24" cy="24" r="22" fill="#07C160"/>
+                        <path d="M16 18h16v2H16zm0 5h16v2H16zm0 5h10v2H16z" fill="white"/>
+                    </svg>
+                </div>
+                <h1>注册账号</h1>
+                <p class="subtitle">创建您的文件传输助手账号</p>
+            </div>
+            
+            <form id="registerForm" novalidate>
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="username" name="username" required 
+                               minlength="3" maxlength="50" placeholder="请输入用户名（3-50个字符）"
+                               autocomplete="username" aria-describedby="username-hint">
+                    </div>
+                    <div class="input-hint" id="username-hint">用户名长度为 3-50 个字符</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" required 
+                               minlength="6" placeholder="请输入密码（至少6个字符）"
+                               autocomplete="new-password" aria-describedby="password-hint">
+                        <button type="button" class="password-toggle" id="togglePassword"
+                                aria-label="显示密码" tabindex="-1">
+                            <svg class="icon-eye" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="display:none">
+                                <path fill="currentColor" d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strengthFill"></div>
+                        </div>
+                        <span class="strength-text" id="strengthText"></span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">确认密码</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="confirmPassword" name="confirmPassword" 
+                               required placeholder="请再次输入密码"
+                               autocomplete="new-password">
+                        <button type="button" class="password-toggle" id="toggleConfirmPassword"
+                                aria-label="显示密码" tabindex="-1">
+                            <svg class="icon-eye" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="display:none">
+                                <path fill="currentColor" d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="input-hint password-match" id="passwordMatch"></div>
+                </div>
+                
+                <div class="error-message" id="errorMessage" role="alert" aria-live="polite"></div>
+                <div class="success-message" id="successMessage" role="status" aria-live="polite"></div>
+                
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="btn-text">注册</span>
+                </button>
+            </form>
+            
+            <div class="auth-link">
+                已有账号？<a href="{{ url_for('login_page') }}">立即登录</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('registerForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const submitBtn = document.getElementById('submitBtn');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+        const passwordMatch = document.getElementById('passwordMatch');
+        
+        function togglePasswordVisibility(input, button) {
+            const type = input.type === 'password' ? 'text' : 'password';
+            input.type = type;
+            
+            const iconEye = button.querySelector('.icon-eye');
+            const iconEyeOff = button.querySelector('.icon-eye-off');
+            
+            if (type === 'text') {
+                iconEye.style.display = 'none';
+                iconEyeOff.style.display = 'block';
+                button.setAttribute('aria-label', '隐藏密码');
+            } else {
+                iconEye.style.display = 'block';
+                iconEyeOff.style.display = 'none';
+                button.setAttribute('aria-label', '显示密码');
+            }
+        }
+        
+        togglePassword.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePassword));
+        toggleConfirmPassword.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPassword));
+        
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            
+            if (password.length >= 6) strength++;
+            if (password.length >= 10) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            
+            return strength;
+        }
+        
+        function updatePasswordStrength() {
+            const password = passwordInput.value;
+            
+            if (!password) {
+                strengthFill.style.width = '0%';
+                strengthFill.className = 'strength-fill';
+                strengthText.textContent = '';
+                return;
+            }
+            
+            const strength = checkPasswordStrength(password);
+            const percent = (strength / 5) * 100;
+            
+            strengthFill.style.width = percent + '%';
+            
+            if (strength <= 1) {
+                strengthFill.className = 'strength-fill weak';
+                strengthText.textContent = '弱';
+            } else if (strength <= 3) {
+                strengthFill.className = 'strength-fill medium';
+                strengthText.textContent = '中等';
+            } else {
+                strengthFill.className = 'strength-fill strong';
+                strengthText.textContent = '强';
+            }
+        }
+        
+        function checkPasswordMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (!confirmPassword) {
+                passwordMatch.textContent = '';
+                passwordMatch.className = 'input-hint password-match';
+                return;
+            }
+            
+            if (password === confirmPassword) {
+                passwordMatch.textContent = '密码匹配';
+                passwordMatch.className = 'input-hint password-match success';
+            } else {
+                passwordMatch.textContent = '密码不匹配';
+                passwordMatch.className = 'input-hint password-match error';
+            }
+        }
+        
+        passwordInput.addEventListener('input', () => {
+            updatePasswordStrength();
+            checkPasswordMatch();
+        });
+        
+        confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            errorMessage.style.animation = 'none';
+            errorMessage.offsetHeight;
+            errorMessage.style.animation = 'shake 0.4s ease';
+        }
+        
+        function hideError() {
+            errorMessage.textContent = '';
+            errorMessage.style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+        }
+        
+        function setLoading(loading) {
+            if (loading) {
+                submitBtn.classList.add('btn-loading');
+                submitBtn.disabled = true;
+            } else {
+                submitBtn.classList.remove('btn-loading');
+                submitBtn.disabled = false;
+            }
+        }
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            hideError();
+            successMessage.style.display = 'none';
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (!username) {
+                showError('请输入用户名');
+                usernameInput.focus();
+                return;
+            }
+            
+            if (username.length < 3 || username.length > 50) {
+                showError('用户名长度为 3-50 个字符');
+                usernameInput.focus();
+                return;
+            }
+            
+            if (!password) {
+                showError('请输入密码');
+                passwordInput.focus();
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('密码至少需要 6 个字符');
+                passwordInput.focus();
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('两次输入的密码不一致');
+                confirmPasswordInput.focus();
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(data.message + '，即将跳转到登录页面...');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    showError(data.error || '注册失败');
+                }
+            } catch (error) {
+                showError('网络错误，请稍后重试');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        usernameInput.addEventListener('input', hideError);
+        passwordInput.addEventListener('input', hideError);
+        confirmPasswordInput.addEventListener('input', hideError);
+        
+        usernameInput.focus();
+    </script>
+</body>
+</html>
