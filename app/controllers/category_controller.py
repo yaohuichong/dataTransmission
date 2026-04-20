@@ -80,3 +80,45 @@ async def delete_category(
         return {'message': message}
     else:
         raise HTTPException(status_code=400, detail=message)
+
+
+@category_router.get('/api/categories/trash')
+async def get_category_trash(
+    request: Request,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    categories = category_service.get_trash(user_id)
+    return {'categories': categories}
+
+
+@category_router.post('/api/categories/trash/{category_id}/restore')
+async def restore_category(
+    request: Request,
+    category_id: int,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    
+    success, message = category_service.restore_category(category_id, user_id)
+    
+    if success:
+        return {'message': message}
+    else:
+        raise HTTPException(status_code=400, detail=message)
+
+
+@category_router.delete('/api/categories/trash/{category_id}')
+async def permanent_delete_category(
+    request: Request,
+    category_id: int,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    
+    success, message = category_service.permanent_delete_category(category_id, user_id)
+    
+    if success:
+        return {'message': message}
+    else:
+        raise HTTPException(status_code=400, detail=message)

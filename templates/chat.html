@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件传输助手</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}?v=12">
 </head>
 <body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="app-layout">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -30,8 +31,15 @@
                     <span class="category-count" id="totalCount">0</span>
                 </div>
             </div>
+            <div class="sidebar-trash">
+                <div class="trash-item" id="trashBtn" title="回收站">
+                    <span class="trash-icon">🗑️</span>
+                    <span class="trash-name">回收站</span>
+                    <span class="trash-count" id="trashCount">0</span>
+                </div>
+            </div>
             <div class="sidebar-footer">
-                <button id="toggleSidebarBtn" class="btn-toggle-sidebar" title="收起侧栏" aria-label="收起侧栏">
+                <button id="toggleSidebarBtnDesktop" class="btn-toggle-sidebar-desktop" title="收起侧栏" aria-label="收起侧栏">
                     <svg viewBox="0 0 24 24" width="18" height="18">
                         <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
                     </svg>
@@ -42,35 +50,39 @@
         <div class="chat-container" id="chatContainer">
         <header class="chat-header">
             <div class="header-info">
-                <div class="avatar">
-                    <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
-                        <circle cx="24" cy="24" r="22" fill="#07C160"/>
-                        <path d="M16 18h16v2H16zm0 5h16v2H16zm0 5h10v2H16z" fill="white"/>
-                    </svg>
-                </div>
+                <button id="toggleSidebarBtn" class="avatar-btn" title="展开侧栏" aria-label="展开侧栏">
+                    <div class="avatar">
+                        <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
+                            <circle cx="24" cy="24" r="22" fill="#07C160"/>
+                            <path d="M16 18h16v2H16zm0 5h16v2H16zm0 5h10v2H16z" fill="white"/>
+                        </svg>
+                    </div>
+                </button>
                 <div class="header-text">
                     <h2>文件传输助手</h2>
                     <span class="status">在线</span>
                 </div>
             </div>
             <div class="header-actions">
-                <button id="batchBtn" class="btn-icon" title="批量操作" aria-label="批量操作">
-                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                        <path fill="currentColor" d="M3 5h2v14H3V5zm4 0h2v14H7V5zm4 0h2v14h-2V5zm4 0h2v14h-2V5zm4 0h2v14h-2V5z"/>
-                    </svg>
-                </button>
-                <button id="searchBtn" class="btn-icon" title="搜索" aria-label="搜索">
-                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                        <path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 001.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 00-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 005.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                    </svg>
-                </button>
-                <span class="username">{{ username }}</span>
                 <button id="logoutBtn" class="btn-logout" aria-label="退出登录">
                     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                         <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                     </svg>
                     退出
                 </button>
+                <div class="action-btns">
+                    <button id="batchBtn" class="btn-icon" title="批量操作" aria-label="批量操作">
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path fill="currentColor" d="M3 5h2v14H3V5zm4 0h2v14H7V5zm4 0h2v14h-2V5zm4 0h2v14h-2V5zm4 0h2v14h-2V5z"/>
+                        </svg>
+                    </button>
+                    <button id="searchBtn" class="btn-icon" title="搜索" aria-label="搜索">
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 001.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 00-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 005.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                        </svg>
+                    </button>
+                </div>
+                <span class="username">{{ username }}</span>
             </div>
         </header>
         
@@ -408,6 +420,7 @@
         let categories = [];
         let searchSelectedCategoryIds = new Set();
         let searchFilteredCategories = [];
+        let isTrashMode = false;
         
         const sidebar = document.getElementById('sidebar');
         const categoryList = document.getElementById('categoryList');
@@ -419,6 +432,8 @@
         const categoryModalClose = document.getElementById('categoryModalClose');
         const categoryCancelBtn = document.getElementById('categoryCancelBtn');
         const categoryConfirmBtn = document.getElementById('categoryConfirmBtn');
+        const trashBtn = document.getElementById('trashBtn');
+        const trashCount = document.getElementById('trashCount');
         
         let editingCategoryId = null;
         
@@ -744,6 +759,283 @@
             }
         }
         
+        async function loadTrashCount() {
+            try {
+                const [msgRes, catRes] = await Promise.all([
+                    fetch('/api/trash'),
+                    fetch('/api/categories/trash')
+                ]);
+                const msgData = await msgRes.json();
+                const catData = await catRes.json();
+                if (msgRes.ok && catRes.ok) {
+                    trashCount.textContent = msgData.messages.length + catData.categories.length;
+                }
+            } catch (error) {
+                console.error('Failed to load trash count:', error);
+            }
+        }
+        
+        async function loadTrash() {
+            isTrashMode = true;
+            isSearchMode = false;
+            searchPanel.classList.remove('active');
+            batchPanel.classList.remove('active');
+            
+            document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
+            trashBtn.classList.add('active');
+            
+            try {
+                const [msgRes, catRes] = await Promise.all([
+                    fetch('/api/trash'),
+                    fetch('/api/categories/trash')
+                ]);
+                const msgData = await msgRes.json();
+                const catData = await catRes.json();
+                
+                if (msgRes.ok && catRes.ok) {
+                    const categories = catData.categories || [];
+                    const messages = msgData.messages || [];
+                    
+                    chatMessages.innerHTML = `
+                        <div class="trash-header">
+                            <h3>🗑️ 回收站</h3>
+                            <button class="btn-empty-trash" id="emptyTrashBtn">清空回收站</button>
+                        </div>
+                        <div class="trash-list" id="trashList"></div>
+                    `;
+                    
+                    const trashList = document.getElementById('trashList');
+                    
+                    if (categories.length === 0 && messages.length === 0) {
+                        trashList.innerHTML = `
+                            <div class="trash-empty">
+                                <p>回收站是空的</p>
+                            </div>
+                        `;
+                    } else {
+                        categories.forEach(cat => {
+                            const item = createTrashCategoryItem(cat);
+                            trashList.appendChild(item);
+                        });
+                        
+                        messages.forEach(msg => {
+                            const item = createTrashItem(msg);
+                            trashList.appendChild(item);
+                        });
+                    }
+                    
+                    document.getElementById('emptyTrashBtn').addEventListener('click', emptyTrash);
+                }
+            } catch (error) {
+                console.error('Failed to load trash:', error);
+            }
+        }
+        
+        function createTrashCategoryItem(cat) {
+            const item = document.createElement('div');
+            item.className = 'trash-category-item';
+            item.dataset.id = cat.id;
+            
+            item.innerHTML = `
+                <div class="trash-category-header" data-id="${cat.id}">
+                    <span class="trash-category-toggle">▶</span>
+                    <span class="trash-category-icon">📁</span>
+                    <span class="trash-category-name">${escapeHtml(cat.name)}</span>
+                    <span class="trash-category-count">${cat.message_count || 0} 个文件</span>
+                    <div class="trash-category-actions">
+                        <button class="btn-restore-category" data-id="${cat.id}">恢复</button>
+                        <button class="btn-delete-category-permanent" data-id="${cat.id}">彻底删除</button>
+                    </div>
+                </div>
+                <div class="trash-category-files" id="cat-files-${cat.id}" style="display: none;">
+                    <div class="trash-category-loading">加载中...</div>
+                </div>
+            `;
+            
+            return item;
+        }
+        
+        async function toggleCategoryFiles(categoryId) {
+            const filesContainer = document.getElementById(`cat-files-${categoryId}`);
+            const toggle = document.querySelector(`.trash-category-header[data-id="${categoryId}"] .trash-category-toggle`);
+            
+            if (filesContainer.style.display === 'none') {
+                filesContainer.style.display = 'block';
+                toggle.textContent = '▼';
+                
+                try {
+                    const response = await fetch(`/api/trash`);
+                    const data = await response.json();
+                    if (response.ok) {
+                        const catMessages = data.messages.filter(m => m.category_id == categoryId);
+                        filesContainer.innerHTML = '';
+                        if (catMessages.length === 0) {
+                            filesContainer.innerHTML = '<div class="trash-category-empty">暂无文件</div>';
+                        } else {
+                            catMessages.forEach(msg => {
+                                const fileItem = createTrashFileItem(msg, true);
+                                filesContainer.appendChild(fileItem);
+                            });
+                        }
+                    }
+                } catch (error) {
+                    filesContainer.innerHTML = '<div class="trash-category-error">加载失败</div>';
+                }
+            } else {
+                filesContainer.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        
+        function createTrashFileItem(msg, isNested = false) {
+            const item = document.createElement('div');
+            item.className = isNested ? 'trash-file-item-nested' : 'trash-item-msg';
+            item.dataset.id = msg.id;
+            
+            let content = '';
+            let size = '';
+            
+            if (msg.type === 'text') {
+                content = msg.content.length > 100 ? msg.content.substring(0, 100) + '...' : msg.content;
+            } else if (msg.type === 'folder') {
+                content = `📁 ${msg.filename}`;
+                size = formatFileSize(msg.file_size);
+            } else {
+                content = `📎 ${msg.filename}`;
+                size = formatFileSize(msg.file_size);
+            }
+            
+            item.innerHTML = `
+                <div class="trash-msg-content">
+                    <span class="trash-msg-type">${msg.type === 'text' ? '📝' : msg.type === 'folder' ? '📁' : '📎'}</span>
+                    <span class="trash-msg-text">${escapeHtml(content)}</span>
+                    ${size ? `<span class="trash-msg-size">${size}</span>` : ''}
+                </div>
+                <div class="trash-msg-info">
+                    <span class="trash-msg-time">删除于 ${msg.deleted_at || msg.time}</span>
+                </div>
+                <div class="trash-msg-actions">
+                    <button class="btn-restore" data-id="${msg.id}">恢复</button>
+                    <button class="btn-delete-permanent" data-id="${msg.id}">彻底删除</button>
+                </div>
+            `;
+            
+            return item;
+        }
+        
+        function createTrashItem(msg) {
+            return createTrashFileItem(msg, false);
+        }
+        
+        async function restoreMessage(msgId) {
+            try {
+                const response = await fetch(`/api/trash/${msgId}/restore`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('已恢复', 'success');
+                    loadTrash();
+                    loadTrashCount();
+                    loadMessages();
+                    loadCategories();
+                } else {
+                    showNotification(data.error || '恢复失败', 'error');
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+            }
+        }
+        
+        async function restoreCategory(categoryId) {
+            try {
+                const response = await fetch(`/api/categories/trash/${categoryId}/restore`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('已恢复目录及其所有文件', 'success');
+                    loadTrash();
+                    loadTrashCount();
+                    loadMessages();
+                    loadCategories();
+                } else {
+                    showNotification(data.error || '恢复失败', 'error');
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+            }
+        }
+        
+        async function permanentDelete(msgId) {
+            const confirmed = await showConfirm('彻底删除', '确定要彻底删除吗？此操作不可恢复。');
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`/api/trash/${msgId}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('已彻底删除', 'success');
+                    loadTrash();
+                    loadTrashCount();
+                } else {
+                    showNotification(data.error || '删除失败', 'error');
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+            }
+        }
+        
+        async function permanentDeleteCategory(categoryId) {
+            const confirmed = await showConfirm('彻底删除目录', '确定要彻底删除此目录及其所有文件吗？此操作不可恢复。');
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`/api/categories/trash/${categoryId}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('已彻底删除', 'success');
+                    loadTrash();
+                    loadTrashCount();
+                } else {
+                    showNotification(data.error || '删除失败', 'error');
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+            }
+        }
+        
+        async function emptyTrash() {
+            const confirmed = await showConfirm('清空回收站', '确定要清空回收站吗？此操作不可恢复。');
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch('/api/trash', { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification(data.message, 'success');
+                    loadTrash();
+                    loadTrashCount();
+                } else {
+                    showNotification(data.error || '清空失败', 'error');
+                }
+            } catch (error) {
+                showNotification('网络错误', 'error');
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (!bytes) return '';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(i > 0 ? 1 : 0) + units[i];
+        }
+        
         function renderCategories(filteredCategories = null) {
             const catsToRender = filteredCategories !== null ? filteredCategories : categories;
             
@@ -791,10 +1083,22 @@
             if (searchFilteredCategories.length === 0) {
                 searchCategoryDropdownList.innerHTML = '<div class="search-category-dropdown-empty">未找到匹配的目录</div>';
             } else {
+                const currentIds = new Set(searchFilteredCategories.map(cat => String(cat.id)));
+                const existingIds = new Set(searchSelectedCategoryIds);
+                
                 searchSelectedCategoryIds.clear();
                 searchFilteredCategories.forEach(cat => {
-                    searchSelectedCategoryIds.add(String(cat.id));
+                    const catId = String(cat.id);
+                    if (existingIds.has(catId)) {
+                        searchSelectedCategoryIds.add(catId);
+                    }
                 });
+                
+                if (searchSelectedCategoryIds.size === 0) {
+                    searchFilteredCategories.forEach(cat => {
+                        searchSelectedCategoryIds.add(String(cat.id));
+                    });
+                }
                 
                 renderSearchCategoryDropdown();
             }
@@ -935,6 +1239,8 @@
         
         function selectCategory(categoryId, categoryName) {
             currentCategoryId = categoryId;
+            isTrashMode = false;
+            trashBtn.classList.remove('active');
             
             document.querySelectorAll('.category-item').forEach(item => {
                 item.classList.remove('active');
@@ -1016,17 +1322,20 @@
         }
         
         async function deleteCategory(categoryId) {
-            if (!confirm('确定删除该目录吗？目录中的消息将移至"全部"中。')) return;
+            const confirmed = await showConfirm('删除目录', '确定删除该目录吗？目录及其中的文件将移至回收站。');
+            if (!confirmed) return;
             
             try {
                 const response = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
+                const data = await response.json();
                 if (response.ok) {
                     categories = categories.filter(c => c.id != categoryId);
                     renderCategories();
                     if (currentCategoryId == categoryId) {
                         selectCategory('', '全部');
                     }
-                    showNotification('目录已删除', 'success');
+                    showNotification(data.message || '目录已移至回收站', 'success');
+                    loadTrashCount();
                 }
             } catch (error) {
                 showNotification('删除失败', 'error');
@@ -1034,7 +1343,50 @@
         }
         
         addCategoryBtn.addEventListener('click', () => openCategoryModal());
-        toggleSidebarBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+        
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+        
+        function initSidebar() {
+            if (isMobile()) {
+                sidebar.classList.add('collapsed');
+                document.body.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+                document.body.classList.remove('sidebar-collapsed');
+            }
+        }
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            toggleSidebarBtn.title = isCollapsed ? '展开侧栏' : '收起侧栏';
+            toggleSidebarBtn.setAttribute('aria-label', isCollapsed ? '展开侧栏' : '收起侧栏');
+            if (toggleSidebarBtnDesktop) {
+                toggleSidebarBtnDesktop.title = isCollapsed ? '展开侧栏' : '收起侧栏';
+                toggleSidebarBtnDesktop.setAttribute('aria-label', isCollapsed ? '展开侧栏' : '收起侧栏');
+            }
+        }
+        
+        initSidebar();
+        window.addEventListener('resize', initSidebar);
+        
+        toggleSidebarBtn.addEventListener('click', toggleSidebar);
+        
+        const toggleSidebarBtnDesktop = document.getElementById('toggleSidebarBtnDesktop');
+        if (toggleSidebarBtnDesktop) {
+            toggleSidebarBtnDesktop.addEventListener('click', toggleSidebar);
+        }
+        
+        sidebarOverlay.addEventListener('click', () => {
+            if (!sidebar.classList.contains('collapsed')) {
+                toggleSidebar();
+            }
+        });
         categoryModalClose.addEventListener('click', closeCategoryModal);
         categoryCancelBtn.addEventListener('click', closeCategoryModal);
         categoryConfirmBtn.addEventListener('click', saveCategory);
@@ -1399,7 +1751,10 @@
             fetch(`/api/messages/${msgId}`, { method: 'DELETE' })
                 .then(response => response.json())
                 .then(data => {
-                    if (!data.success) {
+                    if (data.message) {
+                        showNotification(data.message, 'success');
+                        loadTrashCount();
+                    } else {
                         showNotification(data.error || '删除失败', 'error');
                     }
                 })
@@ -2300,8 +2655,11 @@
         chatContainer.addEventListener('drop', handleDrop);
         
         document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await fetch('/api/logout', { method: 'POST' });
-            window.location.href = '/login';
+            const confirmed = await showConfirm('退出登录', '确定要退出登录吗？');
+            if (confirmed) {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login';
+            }
         });
         
         document.addEventListener('keydown', (e) => {
@@ -2318,8 +2676,37 @@
             }
         });
         
+        trashBtn.addEventListener('click', loadTrash);
+        
+        chatMessages.addEventListener('click', (e) => {
+            const restoreBtn = e.target.closest('.btn-restore');
+            const deleteBtn = e.target.closest('.btn-delete-permanent');
+            const restoreCategoryBtn = e.target.closest('.btn-restore-category');
+            const deleteCategoryBtn = e.target.closest('.btn-delete-category-permanent');
+            const categoryHeader = e.target.closest('.trash-category-header');
+            
+            if (restoreBtn) {
+                restoreMessage(parseInt(restoreBtn.dataset.id));
+            }
+            if (deleteBtn) {
+                permanentDelete(parseInt(deleteBtn.dataset.id));
+            }
+            if (restoreCategoryBtn) {
+                e.stopPropagation();
+                restoreCategory(parseInt(restoreCategoryBtn.dataset.id));
+            }
+            if (deleteCategoryBtn) {
+                e.stopPropagation();
+                permanentDeleteCategory(parseInt(deleteCategoryBtn.dataset.id));
+            }
+            if (categoryHeader && !e.target.closest('button')) {
+                toggleCategoryFiles(categoryHeader.dataset.id);
+            }
+        });
+        
         loadCategories();
         loadMessages();
+        loadTrashCount();
         
         setInterval(pollNewMessages, 2000);
     </script>

@@ -54,6 +54,33 @@ class CategoryService:
         if not category:
             return False, '目录不存在'
         
-        if self._category_repo.delete(category_id):
-            return True, '删除成功'
+        result = self._category_repo.soft_delete(category_id, user_id)
+        if result:
+            return True, '已移至回收站'
+        return False, '删除失败'
+    
+    def get_trash(self, user_id: int) -> List[dict]:
+        categories = self._category_repo.find_deleted(user_id)
+        result = []
+        for c in categories:
+            msg_count = self._category_repo.get_message_count(c.id)
+            result.append({
+                'id': c.id,
+                'name': c.name,
+                'parent_id': c.parent_id,
+                'deleted_at': c.deleted_at,
+                'message_count': msg_count
+            })
+        return result
+    
+    def restore_category(self, category_id: int, user_id: int) -> Tuple[bool, str]:
+        result = self._category_repo.restore(category_id, user_id)
+        if result:
+            return True, '恢复成功'
+        return False, '恢复失败'
+    
+    def permanent_delete_category(self, category_id: int, user_id: int) -> Tuple[bool, str]:
+        result = self._category_repo.permanent_delete(category_id, user_id)
+        if result:
+            return True, '已彻底删除'
         return False, '删除失败'

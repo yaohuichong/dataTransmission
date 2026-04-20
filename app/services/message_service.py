@@ -184,23 +184,65 @@ class FileService:
         
         return message, file_path
     
-    def delete_file(self, user_id: int, msg_id: int) -> Tuple[bool, str]:
-        message = self._message_repo.delete_message(msg_id, user_id)
+    def delete_file(self, user_id: int, msg_id: int, permanent: bool = False) -> Tuple[bool, str]:
+        if permanent:
+            message = self._message_repo.permanent_delete_message(msg_id, user_id)
+            if not message:
+                return False, '消息不存在或无权删除'
+            
+            if message.msg_type == 'file':
+                user_folder = get_user_upload_folder(self._upload_folder, user_id)
+                file_path = os.path.join(user_folder, message.saved_name)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            elif message.msg_type == 'folder':
+                folder_path = message.saved_name
+                if os.path.exists(folder_path):
+                    shutil.rmtree(folder_path)
+            
+            return True, '已彻底删除'
+        
+        message = self._message_repo.soft_delete_message(msg_id, user_id)
         
         if not message:
             return False, '消息不存在或无权删除'
         
-        if message.msg_type == 'file':
-            user_folder = get_user_upload_folder(self._upload_folder, user_id)
-            file_path = os.path.join(user_folder, message.saved_name)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        elif message.msg_type == 'folder':
-            folder_path = message.saved_name
-            if os.path.exists(folder_path):
-                shutil.rmtree(folder_path)
+        return True, '已移至回收站'
+    
+    def get_trash(self, user_id: int) -> List[dict]:
+        messages = self._message_repo.find_deleted_messages(user_id)
+        result = []
+        for m in messages:
+            item = m.to_dict()
+            item['deleted_at'] = m.deleted_at
+            result.append(item)
+        return result
+    
+    def restore_message(self, user_id: int, msg_id: int) -> Tuple[bool, str]:
+        message = self._message_repo.restore_message(msg_id, user_id)
+        if not message:
+            return False, '消息不存在或无法恢复'
+        return True, '恢复成功'
+    
+    def permanent_delete(self, user_id: int, msg_id: int) -> Tuple[bool, str]:
+        return self.delete_file(user_id, msg_id, permanent=True)
+    
+    def empty_trash(self, user_id: int) -> Tuple[bool, str, int]:
+        messages = self._message_repo.find_deleted_messages(user_id)
         
-        return True, '删除成功'
+        for m in messages:
+            if m.msg_type == 'file':
+                user_folder = get_user_upload_folder(self._upload_folder, user_id)
+                file_path = os.path.join(user_folder, m.saved_name)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            elif m.msg_type == 'folder':
+                folder_path = m.saved_name
+                if os.path.exists(folder_path):
+                    shutil.rmtree(folder_path)
+        
+        deleted_count = self._message_repo.empty_trash(user_id)
+        return True, f'已清空回收站，共删除 {deleted_count} 条记录', deleted_count
 
 
 class MessageService:

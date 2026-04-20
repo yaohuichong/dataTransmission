@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 import sqlite3
+import os
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Any, Dict
 from contextlib import contextmanager
 from abc import ABC, abstractmethod
+
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+
+def get_beijing_time():
+    return datetime.now(BEIJING_TZ).strftime('%Y-%m-%d %H:%M:%S')
 
 
 class DatabaseConnection:
@@ -94,6 +102,17 @@ class DatabaseConnection:
                 cursor.execute('ALTER TABLE messages ADD COLUMN file_count INTEGER')
             if 'category_id' not in columns:
                 cursor.execute('ALTER TABLE messages ADD COLUMN category_id INTEGER')
+            if 'is_deleted' not in columns:
+                cursor.execute('ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0')
+            if 'deleted_at' not in columns:
+                cursor.execute('ALTER TABLE messages ADD COLUMN deleted_at DATETIME')
+            
+            cursor.execute("PRAGMA table_info(categories)")
+            cat_columns = [col[1] for col in cursor.fetchall()]
+            if 'is_deleted' not in cat_columns:
+                cursor.execute('ALTER TABLE categories ADD COLUMN is_deleted INTEGER DEFAULT 0')
+            if 'deleted_at' not in cat_columns:
+                cursor.execute('ALTER TABLE categories ADD COLUMN deleted_at DATETIME')
             
             conn.commit()
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from typing import Optional, List
-from .base import BaseRepository, DatabaseConnection
+from .base import BaseRepository, DatabaseConnection, get_beijing_time
 from ..models import User
 
 
@@ -19,9 +19,10 @@ class UserRepository(BaseRepository):
     
     def create(self, username: str, password_hash: str) -> int:
         with self._get_cursor() as cursor:
+            created_at = get_beijing_time()
             cursor.execute(
-                'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-                (username, password_hash)
+                'INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)',
+                (username, password_hash, created_at)
             )
             cursor.connection.commit()
             return cursor.lastrowid

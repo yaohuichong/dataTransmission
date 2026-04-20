@@ -30,6 +30,8 @@ class Category:
     name: str = ''
     parent_id: Optional[int] = None
     created_at: Optional[datetime] = None
+    is_deleted: int = 0
+    deleted_at: Optional[datetime] = None
     
     @classmethod
     def from_row(cls, row) -> 'Category':
@@ -40,7 +42,9 @@ class Category:
             user_id=row['user_id'],
             name=row['name'],
             parent_id=row['parent_id'],
-            created_at=row['created_at']
+            created_at=row['created_at'],
+            is_deleted=row['is_deleted'] if 'is_deleted' in row.keys() else 0,
+            deleted_at=row['deleted_at'] if 'deleted_at' in row.keys() else None
         )
 
 
@@ -58,6 +62,8 @@ class Message:
     file_count: Optional[int] = None
     category_id: Optional[int] = None
     created_at: Optional[datetime] = None
+    is_deleted: int = 0
+    deleted_at: Optional[datetime] = None
     
     @classmethod
     def from_row(cls, row) -> 'Message':
@@ -75,7 +81,9 @@ class Message:
             folder_id=row['folder_id'],
             file_count=row['file_count'],
             category_id=row['category_id'],
-            created_at=row['created_at']
+            created_at=row['created_at'],
+            is_deleted=row['is_deleted'] if 'is_deleted' in row.keys() else 0,
+            deleted_at=row['deleted_at'] if 'deleted_at' in row.keys() else None
         )
     
     def to_dict(self) -> dict:

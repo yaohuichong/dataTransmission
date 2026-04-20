@@ -675,7 +675,22 @@ body {
     
     .file-item {
         grid-template-columns: 1fr;
-        gap: var(--spacing-lg);
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md);
+    }
+    
+    .file-item .col-name {
+        font-weight: 500;
+    }
+    
+    .file-item .col-size,
+    .file-item .col-time {
+        font-size: var(--font-size-xs);
+    }
+    
+    .col-actions {
+        justify-content: flex-start;
+        margin-top: var(--spacing-sm);
     }
     
     .header {
@@ -692,6 +707,24 @@ body {
     
     .main-content {
         padding: var(--spacing-lg);
+    }
+    
+    .upload-area {
+        padding: var(--spacing-2xl);
+    }
+    
+    .upload-icon {
+        font-size: 40px;
+    }
+    
+    .upload-section,
+    .files-section {
+        padding: var(--spacing-lg);
+    }
+    
+    .upload-section h2,
+    .files-section h2 {
+        font-size: var(--font-size-lg);
     }
 }
 

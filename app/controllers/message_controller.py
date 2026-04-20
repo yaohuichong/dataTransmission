@@ -271,3 +271,60 @@ async def delete_message(
         return {'message': message}
     else:
         raise HTTPException(status_code=400, detail=message)
+
+
+@message_router.get('/api/trash')
+async def get_trash(
+    request: Request,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    messages = file_service.get_trash(user_id)
+    return {'messages': messages}
+
+
+@message_router.post('/api/trash/{msg_id}/restore')
+async def restore_message(
+    request: Request,
+    msg_id: int,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    
+    success, message = file_service.restore_message(user_id, msg_id)
+    
+    if success:
+        return {'message': message}
+    else:
+        raise HTTPException(status_code=400, detail=message)
+
+
+@message_router.delete('/api/trash/{msg_id}')
+async def permanent_delete_message(
+    request: Request,
+    msg_id: int,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    
+    success, message = file_service.permanent_delete(user_id, msg_id)
+    
+    if success:
+        return {'message': message}
+    else:
+        raise HTTPException(status_code=400, detail=message)
+
+
+@message_router.delete('/api/trash')
+async def empty_trash(
+    request: Request,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
+    
+    success, message, count = file_service.empty_trash(user_id)
+    
+    if success:
+        return {'message': message, 'count': count}
+    else:
+        raise HTTPException(status_code=400, detail=message)
