@@ -7,7 +7,7 @@ from typing import Set, Dict, Optional
 @dataclass
 class Config:
     SECRET_KEY: str = 'file-transfer-helper-secret-key-2024'
-    MAX_CONTENT_LENGTH: int = 500 * 1024 * 1024
+    MAX_CONTENT_LENGTH: int = 0
     DATABASE: str = None
     UPLOAD_FOLDER: str = None
     CHUNK_SIZE: int = 64 * 1024

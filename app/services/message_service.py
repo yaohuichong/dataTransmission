@@ -38,9 +38,9 @@ class FileService:
             file_path = os.path.join(user_folder, saved_name)
         
         try:
-            contents = await file_obj.read()
             with open(file_path, 'wb') as f:
-                f.write(contents)
+                while chunk := await file_obj.read(1024 * 1024):
+                    f.write(chunk)
             file_size = os.path.getsize(file_path)
             
             msg_id, created_at = self._message_repo.create_file_message(
@@ -90,9 +90,9 @@ class FileService:
                 dir_path = os.path.dirname(file_path)
                 ensure_directory(dir_path)
                 
-                contents = await file.read()
                 with open(file_path, 'wb') as f:
-                    f.write(contents)
+                    while chunk := await file.read(1024 * 1024):
+                        f.write(chunk)
                 file_size = os.path.getsize(file_path)
                 total_size += file_size
                 file_count += 1
