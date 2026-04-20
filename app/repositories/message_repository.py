@@ -32,7 +32,7 @@ class MessageRepository(BaseRepository):
     def find_messages(self, user_id: int, since: str = '0', category_id: int = None) -> List[Message]:
         with self._get_cursor() as cursor:
             query = '''
-                SELECT id, msg_type, content, filename, file_size, relative_path, 
+                SELECT id, user_id, msg_type, content, filename, saved_name, file_size, relative_path, 
                        folder_id, file_count, category_id,
                        datetime(created_at, '+8 hours') as created_at
                 FROM messages 

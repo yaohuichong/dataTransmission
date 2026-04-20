@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+import uvicorn
 from app import create_app, get_config
 
 config = get_config()
@@ -12,6 +12,11 @@ if __name__ == '__main__':
     print(f"数据库位置: {config.DATABASE}")
     print(f"上传目录: {config.UPLOAD_FOLDER}")
     print("请在浏览器中访问: http://127.0.0.1:5000")
+    print("API 文档: http://127.0.0.1:5000/docs")
     print("=" * 50)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=5000
+    )

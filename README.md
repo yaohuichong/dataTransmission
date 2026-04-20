@@ -1,6 +1,6 @@
 # Web 文件传输助手
 
-一个基于 Flask 的轻量级文件传输助手，支持跨设备文件传输、消息搜索、文件预览等功能。
+一个基于 FastAPI 的轻量级文件传输助手，支持跨设备文件传输、消息搜索、文件预览等功能。
 
 ## 功能特性
 
@@ -12,19 +12,32 @@
 - **文件预览**：支持图片和 PDF 在线预览
 - **拖拽上传**：支持拖拽文件到页面直接上传
 - **响应式设计**：适配手机、平板、桌面端
+- **API 文档**：自动生成 Swagger/ReDoc 文档
 
 ## 技术栈
 
-- **后端**：Flask 3.0 + SQLite
+- **后端**：FastAPI + SQLite
 - **前端**：纯 HTML + CSS + JavaScript（无框架）
 - **样式**：CSS 变量主题系统、响应式布局
 - **安全**：bcrypt 密码加密、Session 认证
+- **服务器**：Uvicorn ASGI 服务器
 
 ## 项目结构
 
 ```
 dataTransmission/
-├── app.py                 # Flask 主应用
+├── app/                   # 应用主目录
+│   ├── __init__.py        # FastAPI 应用工厂
+│   ├── config.py          # 配置文件
+│   ├── controllers/       # 控制器（路由）
+│   │   ├── auth_controller.py
+│   │   ├── category_controller.py
+│   │   └── message_controller.py
+│   ├── models/            # 数据模型
+│   ├── repositories/      # 数据访问层
+│   ├── services/          # 业务逻辑层
+│   └── utils/             # 工具函数
+├── run.py                 # 应用入口
 ├── requirements.txt       # Python 依赖
 ├── database.sqlite        # SQLite 数据库（自动创建）
 ├── templates/             # HTML 模板
@@ -76,12 +89,20 @@ pip install -r requirements.txt
 ### 4. 启动应用
 
 ```bash
-python app.py
+python run.py
+```
+
+或使用 uvicorn 直接启动：
+
+```bash
+uvicorn run:app --reload --host 0.0.0.0 --port 5000
 ```
 
 ### 5. 访问应用
 
-打开浏览器访问：http://127.0.0.1:5000
+- 应用地址：http://127.0.0.1:5000
+- API 文档（Swagger）：http://127.0.0.1:5000/docs
+- API 文档（ReDoc）：http://127.0.0.1:5000/redoc
 
 ## 使用说明
 
@@ -115,14 +136,25 @@ python app.py
 - 监听地址：`0.0.0.0:5000`
 - 数据库：SQLite（`database.sqlite`）
 - 上传目录：`uploads/`
-- 最大文件大小：无限制
+- 最大文件大小：500MB
+- Session 有效期：7天
 
-如需修改配置，请编辑 `app.py` 文件。
+可通过环境变量配置：
+
+- `APP_ENV`：运行环境（development/production/testing）
+- `SECRET_KEY`：生产环境密钥
+
+## API 文档
+
+FastAPI 自动生成交互式 API 文档：
+
+- **Swagger UI**：访问 `/docs` 查看
+- **ReDoc**：访问 `/redoc` 查看
 
 ## 注意事项
 
 - 本项目仅供学习和个人使用
-- 生产环境请使用专业的 WSGI 服务器（如 Gunicorn）
+- 生产环境建议使用 Gunicorn + Uvicorn Workers
 - 建议配置 HTTPS 以保护数据传输安全
 
 ## License

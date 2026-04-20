@@ -4,6 +4,7 @@ import uuid
 import shutil
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple, Generator
+from fastapi import UploadFile
 from ..repositories import MessageRepository, MessageSearchParams
 from ..models import Message
 from ..utils import (
@@ -20,8 +21,8 @@ class FileService:
         self._upload_folder = upload_folder
         self._message_repo = message_repo or MessageRepository()
     
-    def save_file(
-        self, user_id: int, file_obj, original_filename: str,
+    async def save_file_async(
+        self, user_id: int, file_obj: UploadFile, original_filename: str,
         relative_path: str = '', category_id: int = None
     ) -> Tuple[bool, str, Optional[dict]]:
         user_folder = get_user_upload_folder(self._upload_folder, user_id)
@@ -37,7 +38,9 @@ class FileService:
             file_path = os.path.join(user_folder, saved_name)
         
         try:
-            file_obj.save(file_path)
+            contents = await file_obj.read()
+            with open(file_path, 'wb') as f:
+                f.write(contents)
             file_size = os.path.getsize(file_path)
             
             msg_id, created_at = self._message_repo.create_file_message(
@@ -64,8 +67,8 @@ class FileService:
                 os.remove(file_path)
             return False, '发送失败', None
     
-    def save_folder(
-        self, user_id: int, files: List, folder_name: str, category_id: int = None
+    async def save_folder_async(
+        self, user_id: int, files: List[UploadFile], folder_name: str, category_id: int = None
     ) -> Tuple[bool, str, Optional[dict]]:
         user_folder = get_user_upload_folder(self._upload_folder, user_id)
         folder_id = uuid.uuid4().hex
@@ -87,7 +90,9 @@ class FileService:
                 dir_path = os.path.dirname(file_path)
                 ensure_directory(dir_path)
                 
-                file.save(file_path)
+                contents = await file.read()
+                with open(file_path, 'wb') as f:
+                    f.write(contents)
                 file_size = os.path.getsize(file_path)
                 total_size += file_size
                 file_count += 1

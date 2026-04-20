@@ -1,25 +1,54 @@
 # -*- coding: utf-8 -*-
 import os
-from flask import Flask, request
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from .config import Config, get_config
 from .repositories import DatabaseConnection
-from .controllers import auth_bp, category_bp, message_bp, init_file_service
+from .controllers import auth_router, category_router, message_router, init_file_service
 
 
-def create_app(config: Config = None) -> Flask:
+def create_app(config: Config = None) -> FastAPI:
     if config is None:
         config = get_config()
     
-    app = Flask(
-        __name__,
-        template_folder='../templates',
-        static_folder='../static'
+    app = FastAPI(
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None
     )
     
-    app.config['SECRET_KEY'] = config.SECRET_KEY
-    app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
-    app.config['DATABASE'] = config.DATABASE
-    app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=config.SECRET_KEY,
+        session_cookie=config.SESSION_COOKIE_NAME,
+        max_age=config.SESSION_MAX_AGE
+    )
+    
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    templates_dir = os.path.join(base_dir, 'templates')
+    static_dir = os.path.join(base_dir, 'static')
+    
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    templates = Jinja2Templates(directory=templates_dir)
+    
+    def url_for(name: str, **kwargs) -> str:
+        if name == 'static':
+            filename = kwargs.get('filename', '')
+            return f"/static/{filename}"
+        route_map = {
+            'login_page': '/login',
+            'register_page': '/register',
+            'chat': '/chat',
+            'index': '/',
+        }
+        return route_map.get(name, f'/{name}')
+    
+    templates.env.globals['url_for'] = url_for
+    
+    app.state.config = config
+    app.state.templates = templates
     
     DatabaseConnection.set_db_path(config.DATABASE)
     DatabaseConnection.init_db()
@@ -29,25 +58,9 @@ def create_app(config: Config = None) -> Flask:
     
     init_file_service(config.UPLOAD_FOLDER)
     
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(category_bp)
-    app.register_blueprint(message_bp)
-    
-    @app.after_request
-    def add_cache_headers(response):
-        if 'static' in request.path or request.path.endswith(
-            ('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot')
-        ):
-            response.cache_control.max_age = 86400
-            response.cache_control.public = True
-        return response
-    
-    @app.after_request
-    def add_security_headers(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        return response
+    app.include_router(auth_router)
+    app.include_router(category_router)
+    app.include_router(message_router)
     
     return app
 

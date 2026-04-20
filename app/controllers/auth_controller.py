@@ -1,91 +1,100 @@
 # -*- coding: utf-8 -*-
-from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for
-from functools import wraps
+from typing import Optional
+from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from pydantic import BaseModel
 from ..services import AuthService
 
 
-auth_bp = Blueprint('auth', __name__)
+auth_router = APIRouter(tags=['auth'])
 auth_service = AuthService()
 
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': '请先登录'}), 401
-        return f(*args, **kwargs)
-    return decorated_function
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
 
 
-@auth_bp.route('/')
-def index():
-    if 'user_id' in session:
-        return redirect(url_for('auth.chat'))
-    return redirect(url_for('auth.login_page'))
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 
-@auth_bp.route('/login')
-def login_page():
-    return render_template('login.html')
+def get_current_user(request: Request) -> Optional[dict]:
+    user_id = request.session.get('user_id')
+    username = request.session.get('username')
+    if not user_id:
+        return None
+    return {'user_id': user_id, 'username': username}
 
 
-@auth_bp.route('/register')
-def register_page():
-    return render_template('register.html')
+def login_required(request: Request):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail='请先登录')
+    return user
 
 
-@auth_bp.route('/chat')
-@login_required
-def chat():
-    return render_template('chat.html', username=session.get('username'))
+@auth_router.get('/', response_class=HTMLResponse)
+async def index(request: Request):
+    user = get_current_user(request)
+    if user:
+        return RedirectResponse(url='/chat', status_code=302)
+    return RedirectResponse(url='/login', status_code=302)
 
 
-@auth_bp.route('/api/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': '无效的请求数据'}), 400
-    
-    username = data.get('username', '')
-    password = data.get('password', '')
-    
-    success, message, user_id = auth_service.register(username, password)
-    
-    if success:
-        return jsonify({'message': message}), 201
-    else:
-        return jsonify({'error': message}), 400
+@auth_router.get('/login', response_class=HTMLResponse)
+async def login_page(request: Request):
+    templates = request.app.state.templates
+    return templates.TemplateResponse('login.html', {'request': request})
 
 
-@auth_bp.route('/api/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': '无效的请求数据'}), 400
-    
-    username = data.get('username', '')
-    password = data.get('password', '')
-    
-    success, message, user = auth_service.login(username, password)
+@auth_router.get('/register', response_class=HTMLResponse)
+async def register_page(request: Request):
+    templates = request.app.state.templates
+    return templates.TemplateResponse('register.html', {'request': request})
+
+
+@auth_router.get('/chat', response_class=HTMLResponse)
+async def chat(request: Request, user: dict = Depends(login_required)):
+    templates = request.app.state.templates
+    return templates.TemplateResponse('chat.html', {
+        'request': request,
+        'username': user['username']
+    })
+
+
+@auth_router.post('/api/register')
+async def register(data: RegisterRequest):
+    success, message, user_id = auth_service.register(data.username, data.password)
     
     if success:
-        session['user_id'] = user.id
-        session['username'] = user.username
-        return jsonify({'message': message, 'username': user.username}), 200
+        return {'message': message}
     else:
-        return jsonify({'error': message}), 401
+        raise HTTPException(status_code=400, detail=message)
 
 
-@auth_bp.route('/api/logout', methods=['POST'])
-def logout():
-    session.clear()
-    return jsonify({'message': '已退出登录'}), 200
+@auth_router.post('/api/login')
+async def login(request: Request, data: LoginRequest):
+    success, message, user = auth_service.login(data.username, data.password)
+    
+    if success:
+        request.session['user_id'] = user.id
+        request.session['username'] = user.username
+        return {'message': message, 'username': user.username}
+    else:
+        raise HTTPException(status_code=401, detail=message)
 
 
-@auth_bp.route('/api/user/info', methods=['GET'])
-@login_required
-def get_user_info():
-    return jsonify({
-        'user_id': session['user_id'],
-        'username': session['username']
-    }), 200
+@auth_router.post('/api/logout')
+async def logout(request: Request):
+    request.session.clear()
+    return {'message': '已退出登录'}
+
+
+@auth_router.get('/api/user/info')
+async def get_user_info(user: dict = Depends(login_required)):
+    return {
+        'user_id': user['user_id'],
+        'username': user['username']
+    }

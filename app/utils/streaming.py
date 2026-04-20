@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-import zipfile
-import tarfile
-from typing import Generator, BinaryIO, Optional
+from typing import Generator, Optional
 from io import BytesIO
 
 
@@ -19,6 +17,8 @@ def stream_file(filepath: str, chunk_size: int = CHUNK_SIZE) -> Generator[bytes,
 
 
 def stream_zip_directory(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Generator[bytes, None, None]:
+    import zipfile
+    
     class ChunkedZipWriter:
         def __init__(self, chunk_size: int):
             self._buffer = BytesIO()
@@ -56,6 +56,8 @@ def stream_zip_directory(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Gene
 
 
 def stream_tar_directory(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Generator[bytes, None, None]:
+    import tarfile
+    
     buffer = BytesIO()
     
     with tarfile.open(fileobj=buffer, mode='w') as tar:
@@ -81,42 +83,10 @@ def stream_tar_directory(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Gene
         yield chunk
 
 
-class StreamingZipFile:
-    def __init__(self):
-        self._buffer = BytesIO()
-        self._zip = zipfile.ZipFile(self._buffer, 'w', zipfile.ZIP_DEFLATED)
-        self._closed = False
-    
-    def add_file(self, filepath: str, arcname: str):
-        self._zip.write(filepath, arcname)
-    
-    def add_file_from_stream(self, file_obj: BinaryIO, arcname: str, file_size: int):
-        self._zip.writestr(arcname, file_obj.read())
-    
-    def close(self):
-        self._zip.close()
-        self._closed = True
-        self._buffer.seek(0)
-    
-    def read_chunk(self, chunk_size: int = CHUNK_SIZE) -> Optional[bytes]:
-        if not self._closed:
-            raise RuntimeError("ZipFile must be closed before reading")
-        return self._buffer.read(chunk_size)
-    
-    def stream(self, chunk_size: int = CHUNK_SIZE) -> Generator[bytes, None, None]:
-        self.close()
-        while True:
-            chunk = self.read_chunk(chunk_size)
-            if not chunk:
-                break
-            yield chunk
-
-
 def true_streaming_zip(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Generator[bytes, None, None]:
     import struct
     import zlib
     
-    CRC_UNKNOWN = 0
     local_file_header_sig = b'PK\x03\x04'
     central_dir_header_sig = b'PK\x01\x02'
     end_central_dir_sig = b'PK\x05\x06'
@@ -148,7 +118,7 @@ def true_streaming_zip(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Genera
                 crc = zlib.crc32(f.read()) & 0xFFFFFFFF
             
             local_header = local_file_header_sig
-            local_header += struct.pack('<HHHHHIIIHH', 20, 0, 0, 0, dos_time, dos_date, crc, file_size, file_size, len(arcname), 0)
+            local_header += struct.pack('<HHHHHIIIHH', 20, 0, 0, dos_time, dos_date, crc, file_size, file_size, len(arcname), 0)
             local_header += arcname.encode('utf-8')
             
             yield write_chunk(local_header)
@@ -174,13 +144,14 @@ def true_streaming_zip(folder_path: str, chunk_size: int = CHUNK_SIZE) -> Genera
     
     for entry in central_dir_entries:
         central_header = central_dir_header_sig
-        central_header += struct.pack('<HHHHHHIIIHHHHHII',
-            20, 20, 0, 0, 0,
+        central_header += struct.pack('<HHHHHHIIIHHHHII',
+            20, 20, 0, 0,
             entry['dos_time'], entry['dos_date'],
             entry['crc'],
             entry['compressed_size'],
             entry['uncompressed_size'],
-            len(entry['arcname']), 0, 0, 0, 0,
+            len(entry['arcname']), 0, 0, 0,
+            0,
             entry['local_offset']
         )
         central_header += entry['arcname'].encode('utf-8')

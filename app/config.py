@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from dataclasses import dataclass, field
-from typing import Set, Dict
+from typing import Set, Dict, Optional
 
 
 @dataclass
@@ -12,6 +12,8 @@ class Config:
     UPLOAD_FOLDER: str = None
     CHUNK_SIZE: int = 64 * 1024
     STREAM_BUFFER_SIZE: int = 64 * 1024
+    SESSION_COOKIE_NAME: str = 'session'
+    SESSION_MAX_AGE: int = 60 * 60 * 24 * 7
     
     FILE_TYPE_EXTENSIONS: Dict[str, Set[str]] = field(default_factory=lambda: {
         'image': {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff', '.tif'},
@@ -37,29 +39,30 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    DEBUG = True
-    TESTING = False
+    DEBUG: bool = True
+    TESTING: bool = False
 
 
 class ProductionConfig(Config):
-    DEBUG = False
-    TESTING = False
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'change-this-in-production')
+    DEBUG: bool = False
+    TESTING: bool = False
+    SECRET_KEY: str = os.environ.get('SECRET_KEY', 'change-this-in-production')
 
 
 class TestingConfig(Config):
-    DEBUG = True
-    TESTING = True
+    DEBUG: bool = True
+    TESTING: bool = True
 
 
-config_by_name = {
-    'development': DevelopmentConfig,
-    'production': ProductionConfig,
-    'testing': TestingConfig
-}
-
-
-def get_config(env_name: str = None) -> Config:
-    if env_name is None:
-        env_name = os.environ.get('FLASK_ENV', 'development')
-    return config_by_name.get(env_name, DevelopmentConfig)()
+def get_config(env: str = None) -> Config:
+    if env is None:
+        env = os.environ.get('APP_ENV', 'development')
+    
+    config_map = {
+        'development': DevelopmentConfig,
+        'production': ProductionConfig,
+        'testing': TestingConfig
+    }
+    
+    config_class = config_map.get(env, DevelopmentConfig)
+    return config_class()

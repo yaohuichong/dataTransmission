@@ -1,72 +1,82 @@
 # -*- coding: utf-8 -*-
-from flask import Blueprint, request, jsonify, session
+from typing import Optional
+from fastapi import APIRouter, Request, Depends, HTTPException
+from pydantic import BaseModel
 from ..services import CategoryService
 from .auth_controller import login_required
 
 
-category_bp = Blueprint('category', __name__)
+category_router = APIRouter(tags=['categories'])
 category_service = CategoryService()
 
 
-@category_bp.route('/api/categories', methods=['GET'])
-@login_required
-def get_categories():
-    user_id = session['user_id']
+class CreateCategoryRequest(BaseModel):
+    name: str
+    parent_id: Optional[int] = None
+
+
+class UpdateCategoryRequest(BaseModel):
+    name: str
+
+
+@category_router.get('/api/categories')
+async def get_categories(
+    request: Request,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
     categories = category_service.get_user_categories(user_id)
-    return jsonify({'categories': categories}), 200
+    return {'categories': categories}
 
 
-@category_bp.route('/api/categories', methods=['POST'])
-@login_required
-def create_category():
-    user_id = session['user_id']
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({'error': '无效的请求数据'}), 400
-    
-    name = data.get('name', '')
-    parent_id = data.get('parent_id')
+@category_router.post('/api/categories')
+async def create_category(
+    request: Request,
+    data: CreateCategoryRequest,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
     
     success, message, category = category_service.create_category(
-        user_id, name, parent_id
+        user_id, data.name, data.parent_id
     )
     
     if success:
-        return jsonify({'message': message, 'category': category}), 201
+        return {'message': message, 'category': category}
     else:
-        return jsonify({'error': message}), 400
+        raise HTTPException(status_code=400, detail=message)
 
 
-@category_bp.route('/api/categories/<int:category_id>', methods=['PUT'])
-@login_required
-def update_category(category_id):
-    user_id = session['user_id']
-    data = request.get_json()
-    
-    if not data:
-        return jsonify({'error': '无效的请求数据'}), 400
-    
-    name = data.get('name', '')
+@category_router.put('/api/categories/{category_id}')
+async def update_category(
+    request: Request,
+    category_id: int,
+    data: UpdateCategoryRequest,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
     
     success, message = category_service.update_category(
-        category_id, user_id, name
+        category_id, user_id, data.name
     )
     
     if success:
-        return jsonify({'message': message}), 200
+        return {'message': message}
     else:
-        return jsonify({'error': message}), 400
+        raise HTTPException(status_code=400, detail=message)
 
 
-@category_bp.route('/api/categories/<int:category_id>', methods=['DELETE'])
-@login_required
-def delete_category(category_id):
-    user_id = session['user_id']
+@category_router.delete('/api/categories/{category_id}')
+async def delete_category(
+    request: Request,
+    category_id: int,
+    user: dict = Depends(login_required)
+):
+    user_id = user['user_id']
     
     success, message = category_service.delete_category(category_id, user_id)
     
     if success:
-        return jsonify({'message': message}), 200
+        return {'message': message}
     else:
-        return jsonify({'error': message}), 400
+        raise HTTPException(status_code=400, detail=message)

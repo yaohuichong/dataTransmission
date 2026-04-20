@@ -7,13 +7,6 @@ from .file_helpers import (
     get_user_upload_folder,
     sanitize_filename
 )
-from .streaming import (
-    stream_file,
-    stream_zip_directory,
-    stream_tar_directory,
-    true_streaming_zip,
-    CHUNK_SIZE
-)
 
 __all__ = [
     'FILE_TYPE_EXTENSIONS',
@@ -21,10 +14,28 @@ __all__ = [
     'get_file_type',
     'ensure_directory',
     'get_user_upload_folder',
-    'sanitize_filename',
-    'stream_file',
-    'stream_zip_directory',
-    'stream_tar_directory',
-    'true_streaming_zip',
-    'CHUNK_SIZE'
+    'sanitize_filename'
 ]
+
+
+def stream_file(filepath: str, chunk_size: int = 64 * 1024):
+    from .streaming import stream_file as _stream_file
+    return _stream_file(filepath, chunk_size)
+
+
+def stream_zip_directory(folder_path: str, chunk_size: int = 64 * 1024):
+    from .streaming import stream_zip_directory as _stream_zip_directory
+    return _stream_zip_directory(folder_path, chunk_size)
+
+
+def stream_tar_directory(folder_path: str, chunk_size: int = 64 * 1024):
+    from .streaming import stream_tar_directory as _stream_tar_directory
+    return _stream_tar_directory(folder_path, chunk_size)
+
+
+def true_streaming_zip(folder_path: str, chunk_size: int = 64 * 1024):
+    from .streaming import true_streaming_zip as _true_streaming_zip
+    return _true_streaming_zip(folder_path, chunk_size)
+
+
+CHUNK_SIZE = 64 * 1024
