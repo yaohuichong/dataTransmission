@@ -96,7 +96,15 @@ class TestingConfig(Config):
     TESTING: bool = True
 
 
+_config_instance: Config = None
+
+
 def get_config(env: str = None) -> Config:
+    global _config_instance
+    
+    if _config_instance is not None:
+        return _config_instance
+    
     if env is None:
         env = os.environ.get('APP_ENV', 'development')
     
@@ -107,4 +115,5 @@ def get_config(env: str = None) -> Config:
     }
     
     config_class = config_map.get(env, DevelopmentConfig)
-    return config_class()
+    _config_instance = config_class()
+    return _config_instance

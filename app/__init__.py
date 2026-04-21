@@ -14,6 +14,7 @@ from .middleware import (
     SecurityHeadersMiddleware,
     ExceptionHandlerMiddleware
 )
+from .websocket_manager import ws_manager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -86,7 +87,8 @@ def create_app(config: Config = None) -> FastAPI:
     init_file_service(
         upload_folder=config.UPLOAD_FOLDER,
         max_file_size=config.MAX_FILE_SIZE,
-        blocked_extensions=config.BLOCKED_EXTENSIONS
+        blocked_extensions=config.BLOCKED_EXTENSIONS,
+        ws_manager=ws_manager
     )
     
     app.include_router(auth_router)

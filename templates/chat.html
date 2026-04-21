@@ -1514,22 +1514,94 @@
             }
         }
         
-        async function pollNewMessages() {
-            if (isSearchMode) return;
+        let ws = null;
+        let wsReconnectTimer = null;
+        let wsHeartbeatTimer = null;
+        
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
             
-            try {
-                const url = currentCategoryId 
-                    ? `/api/messages?since=${lastMsgId}&category_id=${currentCategoryId}`
-                    : `/api/messages?since=${lastMsgId}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (response.ok && data.messages.length > 0) {
-                    data.messages.forEach(msg => addMessage(msg));
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                startHeartbeat();
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'new_message') {
+                        if (isSearchMode) return;
+                        
+                        const msg = data.data;
+                        if (!currentCategoryId || msg.category_id == currentCategoryId) {
+                            addMessage(msg);
+                        }
+                    } else if (data.type === 'message_deleted') {
+                        const msgEl = chatMessages.querySelector(`[data-id="${data.data.id}"]`);
+                        if (msgEl) msgEl.remove();
+                    } else if (data.type === 'category_updated') {
+                        loadCategories();
+                    } else if (data.type === 'pong') {
+                        // heartbeat response
+                    }
+                } catch (e) {
+                    console.error('WebSocket message error:', e);
                 }
-            } catch (error) {
-                console.error('Poll error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket closed');
+                stopHeartbeat();
+                scheduleReconnect();
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        function startHeartbeat() {
+            wsHeartbeatTimer = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 30000);
+        }
+        
+        function stopHeartbeat() {
+            if (wsHeartbeatTimer) {
+                clearInterval(wsHeartbeatTimer);
+                wsHeartbeatTimer = null;
             }
+        }
+        
+        function scheduleReconnect() {
+            if (wsReconnectTimer) return;
+            wsReconnectTimer = setTimeout(() => {
+                wsReconnectTimer = null;
+                if (!ws || ws.readyState === WebSocket.CLOSED) {
+                    connectWebSocket();
+                }
+            }, 3000);
+        }
+        
+        function disconnectWebSocket() {
+            stopHeartbeat();
+            if (wsReconnectTimer) {
+                clearTimeout(wsReconnectTimer);
+                wsReconnectTimer = null;
+            }
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        async function pollNewMessages() {
         }
         
         async function sendTextMessage() {
@@ -1551,12 +1623,8 @@
                 
                 const data = await response.json();
                 
-                if (response.ok) {
-                    if (!currentCategoryId || data.msg.category_id == currentCategoryId) {
-                        addMessage(data.msg);
-                    }
-                } else {
-                    showNotification(data.error || '发送失败', 'error');
+                if (!response.ok) {
+                    showNotification(data.detail || '发送失败', 'error');
                 }
             } catch (error) {
                 showNotification('网络错误', 'error');
@@ -1598,18 +1666,13 @@
                 };
                 xhr.onload = () => {
                     if (xhr.status === 201) {
-                        const data = JSON.parse(xhr.responseText);
-                        if (!currentCategoryId || data.msg.category_id == currentCategoryId) {
-                            replaceWithRealMessage(msgEl, data.msg);
-                        } else {
-                            msgEl.remove();
-                        }
+                        msgEl.remove();
                         showNotification('发送成功', 'success');
-                        resolve(data);
+                        resolve(JSON.parse(xhr.responseText));
                     } else {
                         msgEl.remove();
                         const data = JSON.parse(xhr.responseText);
-                        showNotification(data.error || '发送失败', 'error');
+                        showNotification(data.detail || '发送失败', 'error');
                         reject(data);
                     }
                 };
@@ -1673,18 +1736,13 @@
                 };
                 xhr.onload = () => {
                     if (xhr.status === 201) {
-                        const data = JSON.parse(xhr.responseText);
-                        if (!currentCategoryId || data.msg.category_id == currentCategoryId) {
-                            replaceWithRealMessage(msgEl, data.msg);
-                        } else {
-                            msgEl.remove();
-                        }
+                        msgEl.remove();
                         showNotification('文件夹上传成功', 'success');
-                        resolve(data);
+                        resolve(JSON.parse(xhr.responseText));
                     } else {
                         msgEl.remove();
                         const data = JSON.parse(xhr.responseText);
-                        showNotification(data.error || '上传失败', 'error');
+                        showNotification(data.detail || '上传失败', 'error');
                         reject(data);
                     }
                 };
@@ -2775,8 +2833,7 @@
         loadCategories();
         loadMessages();
         loadTrashCount();
-        
-        setInterval(pollNewMessages, 2000);
+        connectWebSocket();
     </script>
 </body>
 </html>

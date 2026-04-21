@@ -17,14 +17,17 @@ file_service = None
 def init_file_service(
     upload_folder: str, 
     max_file_size: int = 50 * 1024 * 1024,
-    blocked_extensions: Set[str] = None
+    blocked_extensions: Set[str] = None,
+    ws_manager = None
 ):
-    global file_service
+    global file_service, message_service
     file_service = FileService(
         upload_folder=upload_folder,
         max_file_size=max_file_size,
-        blocked_extensions=blocked_extensions
+        blocked_extensions=blocked_extensions,
+        ws_manager=ws_manager
     )
+    message_service.set_ws_manager(ws_manager)
 
 
 class TextMessageRequest(BaseModel):
@@ -83,7 +86,7 @@ async def send_text(
 ):
     user_id = user['user_id']
     
-    success, message, msg = message_service.send_text(
+    success, message, msg = await message_service.send_text_async(
         user_id, data.content, data.category_id
     )
     

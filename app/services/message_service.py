@@ -42,13 +42,18 @@ class FileService:
         message_repo: MessageRepository = None,
         max_file_size: int = 50 * 1024 * 1024,
         blocked_extensions: Set[str] = None,
-        allowed_mime_types: Set[str] = None
+        allowed_mime_types: Set[str] = None,
+        ws_manager = None
     ):
         self._upload_folder = upload_folder
         self._message_repo = message_repo or MessageRepository()
         self._max_file_size = max_file_size
         self._blocked_extensions = blocked_extensions or set()
         self._allowed_mime_types = allowed_mime_types
+        self._ws_manager = ws_manager
+    
+    def set_ws_manager(self, ws_manager):
+        self._ws_manager = ws_manager
     
     def _get_file_extension(self, filename: str) -> str:
         return os.path.splitext(filename)[1].lower()
@@ -151,7 +156,7 @@ class FileService:
                 category_id=category_id
             )
             
-            return True, '发送成功', {
+            msg_data = {
                 'id': msg_id,
                 'type': 'file',
                 'filename': original_filename,
@@ -161,6 +166,11 @@ class FileService:
                 'time': created_at,
                 'category_id': category_id
             }
+            
+            if self._ws_manager:
+                await self._ws_manager.broadcast_new_message(user_id, msg_data)
+            
+            return True, '发送成功', msg_data
         except Exception as e:
             logger.error(f"File upload error: {e}")
             if os.path.exists(file_path):
@@ -249,7 +259,7 @@ class FileService:
                 category_id=category_id
             )
             
-            return True, '发送成功', {
+            msg_data = {
                 'id': msg_id,
                 'type': 'folder',
                 'filename': folder_name,
@@ -259,6 +269,11 @@ class FileService:
                 'time': created_at,
                 'category_id': category_id
             }
+            
+            if self._ws_manager:
+                await self._ws_manager.broadcast_new_message(user_id, msg_data)
+            
+            return True, '发送成功', msg_data
         except Exception as e:
             logger.error(f"Folder upload error: {e}")
             if os.path.exists(folder_path):
@@ -376,8 +391,12 @@ class FileService:
 
 
 class MessageService:
-    def __init__(self, message_repo: MessageRepository = None):
+    def __init__(self, message_repo: MessageRepository = None, ws_manager=None):
         self._message_repo = message_repo or MessageRepository()
+        self._ws_manager = ws_manager
+    
+    def set_ws_manager(self, ws_manager):
+        self._ws_manager = ws_manager
     
     def get_messages(
         self, user_id: int, since: str = '0', category_id: int = None
@@ -400,7 +419,7 @@ class MessageService:
         )
         return self._message_repo.search(params)
     
-    def send_text(
+    async def send_text_async(
         self, user_id: int, content: str, category_id: int = None
     ) -> Tuple[bool, str, Optional[dict]]:
         content = content.strip() if content else ''
@@ -418,12 +437,17 @@ class MessageService:
                 category_id=category_id
             )
             
-            return True, '发送成功', {
+            msg_data = {
                 'id': msg_id,
                 'type': 'text',
                 'content': content,
                 'time': created_at,
                 'category_id': category_id
             }
+            
+            if self._ws_manager:
+                await self._ws_manager.broadcast_new_message(user_id, msg_data)
+            
+            return True, '发送成功', msg_data
         except Exception:
             return False, '发送失败', None
