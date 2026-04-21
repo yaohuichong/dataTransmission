@@ -12,14 +12,17 @@
 - **文件预览**：支持图片和 PDF 在线预览
 - **拖拽上传**：支持拖拽文件到页面直接上传
 - **响应式设计**：适配手机、平板、桌面端
-- **API 文档**：自动生成 Swagger/ReDoc 文档
+- **实时通信**：WebSocket 长连接，消息实时推送
+- **安全特性**：请求限流、安全响应头、密码 bcrypt 加密
+- **回收站**：支持消息软删除和恢复
 
 ## 技术栈
 
 - **后端**：FastAPI + SQLite
 - **前端**：纯 HTML + CSS + JavaScript（无框架）
+- **实时通信**：WebSocket
 - **样式**：CSS 变量主题系统、响应式布局
-- **安全**：bcrypt 密码加密、Session 认证
+- **安全**：bcrypt 密码加密、Session 认证、请求限流
 - **服务器**：Uvicorn ASGI 服务器
 
 ## 项目结构
@@ -29,10 +32,13 @@ dataTransmission/
 ├── app/                   # 应用主目录
 │   ├── __init__.py        # FastAPI 应用工厂
 │   ├── config.py          # 配置文件
+│   ├── websocket_manager.py  # WebSocket 连接管理
 │   ├── controllers/       # 控制器（路由）
 │   │   ├── auth_controller.py
 │   │   ├── category_controller.py
 │   │   └── message_controller.py
+│   ├── middleware/        # 中间件
+│   │   └── security.py    # 安全中间件（限流、安全头等）
 │   ├── models/            # 数据模型
 │   ├── repositories/      # 数据访问层
 │   ├── services/          # 业务逻辑层
@@ -101,8 +107,6 @@ uvicorn run:app --reload --host 0.0.0.0 --port 5000
 ### 5. 访问应用
 
 - 应用地址：http://127.0.0.1:5000
-- API 文档（Swagger）：http://127.0.0.1:5000/docs
-- API 文档（ReDoc）：http://127.0.0.1:5000/redoc
 
 ## 使用说明
 
@@ -129,6 +133,11 @@ uvicorn run:app --reload --host 0.0.0.0 --port 5000
 2. 勾选需要操作的消息
 3. 支持批量下载和批量删除
 
+### 目录管理
+
+- 左侧栏可创建自定义目录分类
+- 支持对消息进行分类管理
+
 ## 配置说明
 
 应用默认配置：
@@ -136,26 +145,29 @@ uvicorn run:app --reload --host 0.0.0.0 --port 5000
 - 监听地址：`0.0.0.0:5000`
 - 数据库：SQLite（`database.sqlite`）
 - 上传目录：`uploads/`
-- 最大文件大小：500MB
 - Session 有效期：7天
+- WebSocket 心跳：30秒
 
 可通过环境变量配置：
 
 - `APP_ENV`：运行环境（development/production/testing）
-- `SECRET_KEY`：生产环境密钥
+- `SECRET_KEY`：生产环境密钥（必填）
+- `CORS_ORIGINS`：跨域允许的源（生产环境）
 
-## API 文档
+## 安全特性
 
-FastAPI 自动生成交互式 API 文档：
-
-- **Swagger UI**：访问 `/docs` 查看
-- **ReDoc**：访问 `/redoc` 查看
+- **密码安全**：bcrypt 加密存储
+- **请求限流**：防止暴力攻击（100次/分钟/IP）
+- **安全响应头**：X-Frame-Options、X-Content-Type-Options 等
+- **Session 安全**：HttpOnly、SameSite 属性
+- **WebSocket 认证**：基于 Session Cookie 验证
 
 ## 注意事项
 
 - 本项目仅供学习和个人使用
 - 生产环境建议使用 Gunicorn + Uvicorn Workers
 - 建议配置 HTTPS 以保护数据传输安全
+- 生产环境必须设置 `SECRET_KEY` 环境变量
 
 ## License
 
