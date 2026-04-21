@@ -1,12 +1,24 @@
 # -*- coding: utf-8 -*-
 import os
+import logging
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from .config import Config, get_config
 from .repositories import DatabaseConnection
 from .controllers import auth_router, category_router, message_router, init_file_service
+from .middleware import (
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    ExceptionHandlerMiddleware
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 def create_app(config: Config = None) -> FastAPI:
@@ -19,11 +31,26 @@ def create_app(config: Config = None) -> FastAPI:
         openapi_url=None
     )
     
+    app.add_middleware(ExceptionHandlerMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    
+    if config.CORS_ORIGINS:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=config.CORS_ORIGINS,
+            allow_credentials=config.CORS_ALLOW_CREDENTIALS,
+            allow_methods=config.CORS_ALLOW_METHODS,
+            allow_headers=config.CORS_ALLOW_HEADERS,
+        )
+    
     app.add_middleware(
         SessionMiddleware,
         secret_key=config.SECRET_KEY,
         session_cookie=config.SESSION_COOKIE_NAME,
-        max_age=config.SESSION_MAX_AGE
+        max_age=config.SESSION_MAX_AGE,
+        same_site='lax',
+        https_only=not config.DEBUG if hasattr(config, 'DEBUG') else False
     )
     
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,7 +83,11 @@ def create_app(config: Config = None) -> FastAPI:
     if not os.path.exists(config.UPLOAD_FOLDER):
         os.makedirs(config.UPLOAD_FOLDER)
     
-    init_file_service(config.UPLOAD_FOLDER)
+    init_file_service(
+        upload_folder=config.UPLOAD_FOLDER,
+        max_file_size=config.MAX_FILE_SIZE,
+        blocked_extensions=config.BLOCKED_EXTENSIONS
+    )
     
     app.include_router(auth_router)
     app.include_router(category_router)

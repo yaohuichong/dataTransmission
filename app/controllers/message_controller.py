@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import mimetypes
-from typing import Optional, List
+from typing import Optional, List, Set
 from fastapi import APIRouter, Request, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 from urllib.parse import quote
@@ -14,9 +14,17 @@ message_service = MessageService()
 file_service = None
 
 
-def init_file_service(upload_folder: str):
+def init_file_service(
+    upload_folder: str, 
+    max_file_size: int = 50 * 1024 * 1024,
+    blocked_extensions: Set[str] = None
+):
     global file_service
-    file_service = FileService(upload_folder)
+    file_service = FileService(
+        upload_folder=upload_folder,
+        max_file_size=max_file_size,
+        blocked_extensions=blocked_extensions
+    )
 
 
 class TextMessageRequest(BaseModel):

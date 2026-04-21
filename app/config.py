@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
+import secrets
 from dataclasses import dataclass, field
-from typing import Set, Dict, Optional
+from typing import Set, Dict, Optional, List
 
 
 @dataclass
 class Config:
-    SECRET_KEY: str = 'file-transfer-helper-secret-key-2024'
+    SECRET_KEY: str = field(default_factory=lambda: secrets.token_hex(32))
     MAX_CONTENT_LENGTH: int = 0
+    MAX_FILE_SIZE: int = 0
     DATABASE: str = None
     UPLOAD_FOLDER: str = None
     CHUNK_SIZE: int = 64 * 1024
@@ -22,6 +24,33 @@ class Config:
         'audio': {'.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg', '.wma', '.ape', '.aiff'},
         'archive': {'.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.tgz'}
     })
+    
+    BLOCKED_EXTENSIONS: Set[str] = field(default_factory=set)
+    
+    ALLOWED_MIME_TYPES: Set[str] = field(default_factory=lambda: {
+        'image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp',
+        'image/svg+xml', 'image/tiff', 'image/x-icon',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain', 'text/markdown', 'text/csv',
+        'video/mp4', 'video/x-msvideo', 'video/x-matroska', 'video/quicktime',
+        'video/x-ms-wmv', 'video/webm', 'video/x-flv',
+        'audio/mpeg', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/ogg',
+        'audio/x-ms-wma', 'audio/x-aiff',
+        'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+        'application/x-tar', 'application/gzip', 'application/x-bzip2',
+        'application/octet-stream'
+    })
+    
+    CORS_ORIGINS: List[str] = field(default_factory=list)
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: List[str] = field(default_factory=lambda: ['GET', 'POST', 'PUT', 'DELETE'])
+    CORS_ALLOW_HEADERS: List[str] = field(default_factory=lambda: ['*'])
     
     def __post_init__(self):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,7 +75,20 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG: bool = False
     TESTING: bool = False
-    SECRET_KEY: str = os.environ.get('SECRET_KEY', 'change-this-in-production')
+    
+    def __post_init__(self):
+        super().__post_init__()
+        env_secret = os.environ.get('SECRET_KEY')
+        if not env_secret:
+            raise ValueError(
+                "生产环境必须设置 SECRET_KEY 环境变量！\n"
+                "请运行: export SECRET_KEY=$(python -c \"import secrets; print(secrets.token_hex(32))\")"
+            )
+        self.SECRET_KEY = env_secret
+        
+        cors_origins = os.environ.get('CORS_ORIGINS', '')
+        if cors_origins:
+            self.CORS_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
 
 
 class TestingConfig(Config):
