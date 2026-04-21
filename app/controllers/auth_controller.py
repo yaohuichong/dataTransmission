@@ -56,7 +56,10 @@ async def register_page(request: Request):
 
 
 @auth_router.get('/chat', response_class=HTMLResponse)
-async def chat(request: Request, user: dict = Depends(login_required)):
+async def chat(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url='/login', status_code=302)
     templates = request.app.state.templates
     return templates.TemplateResponse('chat.html', {
         'request': request,

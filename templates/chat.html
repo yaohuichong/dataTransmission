@@ -345,6 +345,15 @@
     </div>
     
     <script>
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+            if (response.status === 401) {
+                window.location.href = '/login';
+            }
+            return response;
+        };
+        
         const chatContainer = document.getElementById('chatContainer');
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
@@ -489,7 +498,7 @@
         
         function showFilePreview(filename, fileUrl, fileType) {
             filePreviewTitle.textContent = filename;
-            filePreviewBody.innerHTML = '';
+            filePreviewBody.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">加载中...</div>';
             
             filePreviewContent.style.position = '';
             filePreviewContent.style.left = '';
@@ -506,11 +515,30 @@
                 img.onerror = () => {
                     filePreviewBody.innerHTML = '<p style="color: var(--text-muted);">图片加载失败</p>';
                 };
+                filePreviewBody.innerHTML = '';
                 filePreviewBody.appendChild(img);
             } else if (fileType === 'application/pdf') {
-                const iframe = document.createElement('iframe');
-                iframe.src = fileUrl + '?preview=true#toolbar=1&navpanes=0&view=FitH';
-                filePreviewBody.appendChild(iframe);
+                fetch(fileUrl + '?preview=true', { credentials: 'same-origin' })
+                    .then(response => {
+                        if (response.status === 401) {
+                            window.location.href = '/login';
+                            return null;
+                        }
+                        if (!response.ok) throw new Error('加载失败');
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        if (!blob) return;
+                        const blobUrl = URL.createObjectURL(blob);
+                        const iframe = document.createElement('iframe');
+                        iframe.src = blobUrl + '#toolbar=1&navpanes=0&view=FitH';
+                        iframe.onload = () => URL.revokeObjectURL(blobUrl);
+                        filePreviewBody.innerHTML = '';
+                        filePreviewBody.appendChild(iframe);
+                    })
+                    .catch(err => {
+                        filePreviewBody.innerHTML = '<p style="color: var(--text-muted);">PDF加载失败</p>';
+                    });
             } else {
                 filePreviewBody.innerHTML = `
                     <div style="text-align: center; padding: 40px;">
