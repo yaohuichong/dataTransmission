@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件传输助手</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}?v=12">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}?v=13">
 </head>
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -554,6 +554,7 @@
                     checkbox.style.display = enable ? 'inline-block' : 'none';
                     if (!enable) checkbox.checked = false;
                 }
+                msg.classList.toggle('batch-mode', enable);
             });
             if (!enable) {
                 selectedMsgs.clear();
@@ -633,6 +634,7 @@
             div.dataset.type = msg.type;
             if (msg.type === 'file') div.dataset.fileId = msg.file_id;
             if (msg.type === 'folder') div.dataset.folderId = msg.folder_id;
+            if (isBatchMode) div.classList.add('batch-mode');
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -663,7 +665,41 @@
             bubbleDiv.className = 'msg-bubble';
             
             if (msg.type === 'text') {
-                bubbleDiv.innerHTML = `<div class="msg-text">${escapeHtml(msg.content)}</div>`;
+                const textDiv = document.createElement('div');
+                textDiv.className = 'msg-text';
+                textDiv.textContent = msg.content;
+                textDiv.dataset.fullContent = msg.content;
+                
+                if (msg.content && msg.content.length > 500) {
+                    const previewText = msg.content.substring(0, 500) + '...';
+                    textDiv.textContent = previewText;
+                    textDiv.classList.add('msg-text-collapsed');
+                    
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'msg-text-toggle';
+                    toggleBtn.textContent = '展开';
+                    toggleBtn.setAttribute('aria-label', '展开全文');
+                    
+                    toggleBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (textDiv.classList.contains('msg-text-collapsed')) {
+                            textDiv.textContent = textDiv.dataset.fullContent;
+                            textDiv.classList.remove('msg-text-collapsed');
+                            textDiv.classList.add('msg-text-expanded');
+                            toggleBtn.textContent = '收起';
+                        } else {
+                            textDiv.textContent = previewText;
+                            textDiv.classList.remove('msg-text-expanded');
+                            textDiv.classList.add('msg-text-collapsed');
+                            toggleBtn.textContent = '展开';
+                        }
+                    });
+                    
+                    bubbleDiv.appendChild(textDiv);
+                    bubbleDiv.appendChild(toggleBtn);
+                } else {
+                    bubbleDiv.appendChild(textDiv);
+                }
             } else if (msg.type === 'folder') {
                 bubbleDiv.classList.add('has-file');
                 bubbleDiv.innerHTML = `
@@ -2636,8 +2672,12 @@
                     const msgEl = chatMessages.querySelector(`[data-id="${currentMsgId}"]`);
                     const textEl = msgEl.querySelector('.msg-text');
                     if (textEl) {
-                        navigator.clipboard.writeText(textEl.textContent);
-                        showNotification('已复制', 'success');
+                        const fullContent = textEl.dataset.fullContent || textEl.textContent;
+                        navigator.clipboard.writeText(fullContent).then(() => {
+                            showNotification('已复制', 'success');
+                        }).catch(() => {
+                            showNotification('复制失败', 'error');
+                        });
                     }
                 } else if (action === 'delete') {
                     showConfirm('确认删除', '确定删除这条消息吗？', true).then(confirmed => {

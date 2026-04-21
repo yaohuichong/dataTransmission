@@ -1445,6 +1445,10 @@ body {
     animation: messageSlideIn 0.3s ease;
 }
 
+.message.batch-mode {
+    padding-left: var(--spacing-3xl);
+}
+
 @keyframes messageSlideIn {
     from {
         opacity: 0;
@@ -1697,6 +1701,31 @@ body {
     line-height: 1.5;
     color: var(--text-primary);
     white-space: pre-wrap;
+}
+
+.msg-text-collapsed {
+    cursor: default;
+}
+
+.msg-text-expanded {
+    max-height: none;
+}
+
+.msg-text-toggle {
+    display: block;
+    margin-top: var(--spacing-xs);
+    padding: 2px 8px;
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.msg-text-toggle:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
 }
 
 .msg-file {
