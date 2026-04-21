@@ -154,8 +154,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             'gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'
         )
         
-        response.headers.pop('Server', None)
-        response.headers.pop('X-Powered-By', None)
+        try:
+            del response.headers['server']
+        except KeyError:
+            pass
+        try:
+            del response.headers['x-powered-by']
+        except KeyError:
+            pass
         
         return response
 
